@@ -16,6 +16,7 @@ from app.schemas.scheduled_query import (
     ScheduledQueryUpdate,
     ScheduledQuery as ScheduledQueryResponse,
 )
+from app.services.scheduler_service import scheduler_service
 
 router = APIRouter()
 
@@ -123,6 +124,9 @@ async def create_scheduled_query(
     await db.commit()
     await db.refresh(scheduled_query)
 
+    # Schedule the query
+    await scheduler_service.schedule_query(scheduled_query)
+
     return scheduled_query
 
 
@@ -193,6 +197,9 @@ async def update_scheduled_query(
     await db.commit()
     await db.refresh(scheduled_query)
 
+    # Reschedule the query (removes old schedule and adds new one)
+    await scheduler_service.schedule_query(scheduled_query)
+
     return scheduled_query
 
 
@@ -221,6 +228,9 @@ async def delete_scheduled_query(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Scheduled query not found",
         )
+
+    # Unschedule the query first
+    await scheduler_service.unschedule_query(str(query_id))
 
     await db.delete(scheduled_query)
     await db.commit()

@@ -1,9 +1,13 @@
 """Main FastAPI application."""
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routers import auth, health, workspaces, connections, dashboards, saved_queries, query_history, scheduled_queries
 from app.config import settings
+from app.services.scheduler_service import scheduler_service
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -34,12 +38,28 @@ app.include_router(scheduled_queries.router, prefix="/api/v1", tags=["scheduled-
 @app.on_event("startup")
 async def startup_event() -> None:
     """Startup event handler."""
-    # Initialize connections, warm up caches, etc.
-    pass
+    logger.info("Starting application...")
+
+    # Start background scheduler
+    try:
+        scheduler_service.start()
+        logger.info("Scheduler service started")
+
+        # Load all scheduled queries from database
+        await scheduler_service.load_all_scheduled_queries()
+        logger.info("Scheduled queries loaded")
+    except Exception as e:
+        logger.error(f"Error starting scheduler: {e}")
 
 
 @app.on_event("shutdown")
 async def shutdown_event() -> None:
     """Shutdown event handler."""
-    # Close connections, cleanup, etc.
-    pass
+    logger.info("Shutting down application...")
+
+    # Shutdown scheduler
+    try:
+        scheduler_service.shutdown()
+        logger.info("Scheduler service stopped")
+    except Exception as e:
+        logger.error(f"Error stopping scheduler: {e}")

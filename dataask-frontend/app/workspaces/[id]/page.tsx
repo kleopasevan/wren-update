@@ -22,9 +22,9 @@ import { SchemaExplorerDialog } from '@/components/connections/SchemaExplorerDia
 import { CreateDashboardDialog } from '@/components/dashboards/CreateDashboardDialog'
 import { EditDashboardDialog } from '@/components/dashboards/EditDashboardDialog'
 import { DeleteDashboardDialog } from '@/components/dashboards/DeleteDashboardDialog'
-import { ArrowLeft, Plus, Database, MoreVertical, Pencil, Trash2, TestTube, LayoutDashboard, ListTree, FolderOpen, History } from 'lucide-react'
+import { ArrowLeft, Plus, Database, MoreVertical, Pencil, Trash2, TestTube, LayoutDashboard, ListTree, FolderOpen, History, Clock } from 'lucide-react'
 
-type Tab = 'connections' | 'dashboards' | 'queries' | 'history' | 'settings'
+type Tab = 'connections' | 'dashboards' | 'queries' | 'history' | 'schedules' | 'settings'
 
 export default function WorkspaceDetailPage() {
   const { user, isLoading: authLoading } = useAuth()
@@ -247,6 +247,16 @@ export default function WorkspaceDetailPage() {
               }`}
             >
               Query History
+            </button>
+            <button
+              onClick={() => setActiveTab('schedules')}
+              className={`pb-3 border-b-2 text-sm font-medium transition-colors ${
+                activeTab === 'schedules'
+                  ? 'border-primary text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Scheduled Queries
             </button>
             <button
               onClick={() => setActiveTab('settings')}
@@ -547,6 +557,41 @@ export default function WorkspaceDetailPage() {
                 <Button onClick={() => router.push(`/workspaces/${workspaceId}/query-history`)}>
                   <History className="mr-2 h-4 w-4" />
                   Browse Query History
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Scheduled Queries Tab */}
+        {activeTab === 'schedules' && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-semibold">Scheduled Queries</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Automate query execution and email reports
+                </p>
+              </div>
+              <Button onClick={() => router.push(`/workspaces/${workspaceId}/scheduled-queries`)}>
+                <Clock className="mr-2 h-4 w-4" />
+                View All Schedules
+              </Button>
+            </div>
+
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <div className="rounded-full bg-muted p-3 mb-4">
+                  <Clock className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">Scheduled Query Execution</h3>
+                <p className="text-sm text-muted-foreground text-center mb-4 max-w-sm">
+                  Schedule queries to run automatically on cron schedules or fixed intervals.
+                  Results are emailed as CSV or PDF attachments.
+                </p>
+                <Button onClick={() => router.push(`/workspaces/${workspaceId}/scheduled-queries`)}>
+                  <Clock className="mr-2 h-4 w-4" />
+                  Manage Scheduled Queries
                 </Button>
               </CardContent>
             </Card>
