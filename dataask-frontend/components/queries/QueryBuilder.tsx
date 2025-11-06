@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Loader2, Play, Plus, Trash2, Code } from 'lucide-react'
+import { Loader2, Play, Plus, Trash2, Code, Sparkles, Blocks } from 'lucide-react'
 import { connectionsApi, Table } from '@/lib/api/connections'
 import { queriesApi, QueryDefinition, QueryFilter, QueryOrderBy } from '@/lib/api/queries'
 import {
@@ -23,6 +23,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { AskAI } from '@/components/ai/AskAI'
+
+type QueryMode = 'visual' | 'ai'
 
 interface QueryBuilderProps {
   workspaceId: string
@@ -31,6 +34,7 @@ interface QueryBuilderProps {
 }
 
 export function QueryBuilder({ workspaceId, connectionId, onSave }: QueryBuilderProps) {
+  const [mode, setMode] = useState<QueryMode>('visual')
   const [tables, setTables] = useState<Table[]>([])
   const [selectedTable, setSelectedTable] = useState<Table | null>(null)
   const [selectedColumns, setSelectedColumns] = useState<string[]>([])
@@ -45,6 +49,10 @@ export function QueryBuilder({ workspaceId, connectionId, onSave }: QueryBuilder
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false)
   const [previewData, setPreviewData] = useState<any>(null)
   const [previewSql, setPreviewSql] = useState('')
+
+  // AI mode state
+  const [aiGeneratedSql, setAiGeneratedSql] = useState<string>('')
+  const [aiQuestion, setAiQuestion] = useState<string>('')
 
   useEffect(() => {
     loadTables()
@@ -187,14 +195,114 @@ export function QueryBuilder({ workspaceId, connectionId, onSave }: QueryBuilder
     )
   }
 
+  function handleAISQLGenerated(sql: string, question: string) {
+    setAiGeneratedSql(sql)
+    setAiQuestion(question)
+  }
+
+  async function handleExecuteAIQuery() {
+    if (!aiGeneratedSql) return
+
+    setIsExecuting(true)
+    setError('')
+
+    try {
+      const result = await queriesApi.execute(workspaceId, connectionId, { sql: aiGeneratedSql })
+      setPreviewSql(aiGeneratedSql)
+      setPreviewData(result.data)
+      setPreviewDialogOpen(true)
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to execute query')
+    } finally {
+      setIsExecuting(false)
+    }
+  }
+
+  function handleSaveAIQuery() {
+    if (!aiGeneratedSql || !onSave) return
+
+    // For AI queries, we'll store the SQL as a raw query
+    // This is a simplified approach - ideally we'd parse it back to QueryDefinition
+    onSave({
+      table: '',  // AI query doesn't have a single table
+      sql: aiGeneratedSql,  // Store raw SQL
+    } as any)
+  }
+
   return (
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Query Builder</CardTitle>
-          <CardDescription>Build and execute queries visually</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Query Builder</CardTitle>
+              <CardDescription>
+                {mode === 'visual'
+                  ? 'Build and execute queries visually'
+                  : 'Generate queries with AI from natural language'}
+              </CardDescription>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant={mode === 'visual' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setMode('visual')}
+              >
+                <Blocks className="h-4 w-4 mr-2" />
+                Visual
+              </Button>
+              <Button
+                variant={mode === 'ai' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setMode('ai')}
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                AI Query
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
+          {mode === 'ai' ? (
+            <>
+              {/* AI Query Mode */}
+              <AskAI
+                workspaceId={workspaceId}
+                connectionId={connectionId}
+                onSQLGenerated={handleAISQLGenerated}
+                placeholder="Ask a question about your data in plain English..."
+                showPreview={true}
+              />
+
+              {aiGeneratedSql && (
+                <>
+                  {error && (
+                    <div className="text-sm text-destructive bg-destructive/10 p-3 rounded">
+                      {error}
+                    </div>
+                  )}
+
+                  <div className="flex items-center space-x-2">
+                    <Button onClick={handleExecuteAIQuery} disabled={isExecuting}>
+                      {isExecuting ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Play className="h-4 w-4 mr-2" />
+                      )}
+                      Execute Query
+                    </Button>
+                    {onSave && (
+                      <Button onClick={handleSaveAIQuery} variant="outline">
+                        Save Query
+                      </Button>
+                    )}
+                  </div>
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              {/* Visual Query Mode */}
           {/* Table Selection */}
           <div className="space-y-2">
             <Label>Select Table</Label>
@@ -397,6 +505,8 @@ export function QueryBuilder({ workspaceId, connectionId, onSave }: QueryBuilder
                   </Button>
                 )}
               </div>
+            </>
+          )}
             </>
           )}
         </CardContent>

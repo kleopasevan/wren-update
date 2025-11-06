@@ -21,7 +21,12 @@ from app.schemas.query import (
     QueryExecuteRequest,
     QueryExecuteResponse,
 )
+from app.schemas.ai_query import (
+    TextToSQLRequest,
+    TextToSQLResponse,
+)
 from app.services.connection_service import ConnectionService
+from app.clients.wren_ai_client import wren_ai_client
 
 router = APIRouter()
 
@@ -307,3 +312,60 @@ async def execute_query(
         "data": data,
         "row_count": row_count,
     }
+
+
+@router.post("/workspaces/{workspace_id}/connections/{connection_id}/text-to-sql", response_model=TextToSQLResponse)
+async def text_to_sql(
+    workspace_id: uuid.UUID,
+    connection_id: uuid.UUID,
+    request: TextToSQLRequest,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Convert natural language question to SQL using Wren AI.
+
+    This endpoint uses Wren AI service to convert natural language questions
+    into SQL queries, leveraging the semantic layer (MDL) for context.
+
+    Args:
+        workspace_id: Workspace ID
+        connection_id: Connection ID to query against
+        request: Text-to-SQL request with question and optional context
+
+    Returns:
+        Generated SQL query and metadata
+
+    Note:
+        - The connection must have an associated MDL deployment for best results
+        - Without MDL, the AI will use basic schema information
+        - Histories can improve context for follow-up questions
+    """
+    # Check workspace permission
+    await get_workspace_and_check_permission(workspace_id, current_user, db)
+
+    # Verify connection exists and belongs to workspace
+    connection_service = ConnectionService(db)
+    connection = await connection_service.get_connection(connection_id, workspace_id)
+
+    # TODO: Get MDL hash from connection's deployed semantic model
+    # For now, we'll pass None and let Wren AI use basic schema
+    mdl_hash = None
+
+    # Convert histories to dict format expected by Wren AI
+    histories = None
+    if request.histories:
+        histories = [
+            {"question": h.question, "sql": h.sql}
+            for h in request.histories
+        ]
+
+    # Call Wren AI service
+    result = await wren_ai_client.text_to_sql(
+        question=request.question,
+        mdl_hash=mdl_hash,
+        histories=histories,
+        custom_instruction=request.custom_instruction,
+        enable_column_pruning=request.enable_column_pruning,
+    )
+
+    return result

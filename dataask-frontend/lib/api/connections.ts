@@ -76,6 +76,34 @@ export interface Constraint {
   constraintedColumn: string
 }
 
+export interface QueryHistory {
+  question: string
+  sql: string
+}
+
+export interface TextToSQLRequest {
+  question: string
+  mdl_hash?: string
+  histories?: QueryHistory[]
+  custom_instruction?: string
+  enable_column_pruning?: boolean
+}
+
+export interface AIError {
+  code: 'NO_RELEVANT_DATA' | 'NO_RELEVANT_SQL' | 'OTHERS'
+  message: string
+}
+
+export interface TextToSQLResponse {
+  status: 'finished' | 'failed'
+  sql?: string
+  rephrased_question?: string
+  type?: 'GENERAL' | 'TEXT_TO_SQL'
+  retrieved_tables?: string[]
+  error?: AIError
+  invalid_sql?: string
+}
+
 export const connectionsApi = {
   /**
    * List all connections for a workspace
@@ -170,6 +198,21 @@ export const connectionsApi = {
     const response = await apiClient.get(
       `/workspaces/${workspaceId}/connections/${connectionId}/tables/${encodeURIComponent(tableName)}/preview`,
       { params: { limit } }
+    )
+    return response.data
+  },
+
+  /**
+   * Convert natural language to SQL using Wren AI
+   */
+  async textToSql(
+    workspaceId: string,
+    connectionId: string,
+    request: Omit<TextToSQLRequest, 'mdl_hash'>
+  ): Promise<TextToSQLResponse> {
+    const response = await apiClient.post<TextToSQLResponse>(
+      `/workspaces/${workspaceId}/connections/${connectionId}/text-to-sql`,
+      request
     )
     return response.data
   },
