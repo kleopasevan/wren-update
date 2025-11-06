@@ -60,7 +60,7 @@ This is the master checklist for implementing the complete DataAsk platform acco
 
 **Status:** 2/7 complete (29%)
 
-### 2.2 AI-Native Architecture
+### 2.2 AI-Native Architecture (use wren's way dont create from 0)
 - [x] Integration with Wren AI service
 - [x] Text-to-SQL basic functionality
 - [ ] Embedded AI models
@@ -122,13 +122,6 @@ This is the master checklist for implementing the complete DataAsk platform acco
 - [x] BigQuery connector (via Ibis)
 - [x] Snowflake connector (via Ibis)
 - [x] DuckDB connector (via Ibis)
-- [ ] Microsoft SQL Server (verify and expose in UI)
-- [ ] Oracle Database (add to Ibis configuration)
-- [ ] SQLite (add to connection types)
-- [ ] MongoDB connector
-  - [ ] Ibis MongoDB support or custom client
-  - [ ] Schema inference for NoSQL
-  - [ ] Query builder for document queries
 - [ ] Elasticsearch connector
   - [ ] Search query builder
   - [ ] Index browsing
@@ -144,11 +137,7 @@ This is the master checklist for implementing the complete DataAsk platform acco
   - [ ] GraphQL query builder
   - [ ] API authentication management
   - [ ] Rate limiting handling
-- [ ] SaaS connectors
-  - [ ] Salesforce connector (via REST API)
-  - [ ] Google Sheets connector (Google API)
-  - [ ] Slack connector (for data export)
-  - [ ] Jira connector (issue tracking data)
+
 
 **Status:** 5/21 complete (24%)
 
@@ -226,7 +215,7 @@ This is the master checklist for implementing the complete DataAsk platform acco
 
 ---
 
-## Section 5: Schema Intelligence & Discovery
+## Section 5: Schema Intelligence & Discovery (Combine this with wren later (we use the wren way))
 
 ### 5.1 Automated Schema Exploration
 - [x] Basic schema inspection (tables, columns)
@@ -308,7 +297,7 @@ This is the master checklist for implementing the complete DataAsk platform acco
 
 ---
 
-## Section 6: Conversational Analytics Engine
+## Section 6: Conversational Analytics Engine (use wren's way of context management and then we start from there)
 
 ### 6.1 Natural Language Query Processing
 - [x] Basic text-to-SQL (Wren AI integration)
@@ -463,7 +452,7 @@ This is the master checklist for implementing the complete DataAsk platform acco
 
 **Status:** 4/7 complete (57%)
 
-### 7.3 Real-Time Dashboard Updates
+### 7.3 Real-Time Dashboard Updates 
 - [ ] WebSocket integration
   - [ ] WebSocket server setup
   - [ ] Client connection management
@@ -690,7 +679,7 @@ This is the master checklist for implementing the complete DataAsk platform acco
 
 **Status:** 1/8 complete (13%)
 
-### 9.3 Audit & Compliance
+### 9.3 Audit & Compliance (this is last phase)
 - [x] Basic query history audit
 - [ ] Immutable audit logs
   - [ ] Write-once storage
@@ -725,7 +714,7 @@ This is the master checklist for implementing the complete DataAsk platform acco
 
 ## Section 10: Collaboration & Workflow Features
 
-### 10.1 Team Collaboration Tools
+### 10.1 Team Collaboration Tools (last phase)
 - [ ] Real-time co-editing
   - [ ] Operational transformation or CRDT
   - [ ] Live cursor positions
@@ -759,7 +748,7 @@ This is the master checklist for implementing the complete DataAsk platform acco
 
 **Status:** 0/6 complete (0%)
 
-### 10.2 Workflow Automation
+### 10.2 Workflow Automation (last phase)
 - [x] Scheduled report generation (queries)
 - [x] Email reports with CSV/PDF
 - [x] Alert rules (via scheduled queries)
