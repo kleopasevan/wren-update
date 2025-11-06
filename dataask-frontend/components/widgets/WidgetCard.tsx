@@ -9,17 +9,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { MoreVertical, Pencil, Trash2 } from 'lucide-react'
+import { MoreVertical, Pencil, Trash2, Database } from 'lucide-react'
 import { Widget } from '@/lib/api/widgets'
 
 interface WidgetCardProps {
   widget: Widget
   onEdit: (widget: Widget) => void
   onDelete: (widget: Widget) => void
+  onConfigureData?: (widget: Widget) => void
   children: React.ReactNode
 }
 
-export function WidgetCard({ widget, onEdit, onDelete, children }: WidgetCardProps) {
+export function WidgetCard({ widget, onEdit, onDelete, onConfigureData, children }: WidgetCardProps) {
+  // Only show Configure Data for chart and table widgets
+  const showConfigureData = onConfigureData && (widget.type === 'chart' || widget.type === 'table')
+
   return (
     <Card className="h-full flex flex-col group">
       <CardHeader className="flex-row items-start justify-between space-y-0 pb-2">
@@ -37,6 +41,15 @@ export function WidgetCard({ widget, onEdit, onDelete, children }: WidgetCardPro
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            {showConfigureData && (
+              <>
+                <DropdownMenuItem onClick={() => onConfigureData(widget)}>
+                  <Database className="mr-2 h-4 w-4" />
+                  Configure Data
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
             <DropdownMenuItem onClick={() => onEdit(widget)}>
               <Pencil className="mr-2 h-4 w-4" />
               Edit

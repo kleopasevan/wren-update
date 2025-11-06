@@ -10,8 +10,10 @@ import { Widget } from '@/components/widgets/Widget'
 import { CreateWidgetDialog } from '@/components/widgets/CreateWidgetDialog'
 import { EditWidgetDialog } from '@/components/widgets/EditWidgetDialog'
 import { DeleteWidgetDialog } from '@/components/widgets/DeleteWidgetDialog'
+import { ConfigureWidgetDataDialog } from '@/components/widgets/ConfigureWidgetDataDialog'
 import { EditDashboardDialog } from '@/components/dashboards/EditDashboardDialog'
 import { DeleteDashboardDialog } from '@/components/dashboards/DeleteDashboardDialog'
+import { QueryDefinition } from '@/lib/api/queries'
 import {
   ArrowLeft,
   Loader2,
@@ -43,6 +45,7 @@ export default function DashboardDetailPage() {
   const [createWidgetDialogOpen, setCreateWidgetDialogOpen] = useState(false)
   const [editWidgetDialogOpen, setEditWidgetDialogOpen] = useState(false)
   const [deleteWidgetDialogOpen, setDeleteWidgetDialogOpen] = useState(false)
+  const [configureDataDialogOpen, setConfigureDataDialogOpen] = useState(false)
   const [selectedWidget, setSelectedWidget] = useState<WidgetType | null>(null)
 
   // Dashboard dialog states
@@ -78,6 +81,29 @@ export default function DashboardDetailPage() {
   function handleDeleteWidget(widget: WidgetType) {
     setSelectedWidget(widget)
     setDeleteWidgetDialogOpen(true)
+  }
+
+  function handleConfigureData(widget: WidgetType) {
+    setSelectedWidget(widget)
+    setConfigureDataDialogOpen(true)
+  }
+
+  async function handleSaveWidgetData(connectionId: string, query: QueryDefinition) {
+    if (!selectedWidget) return
+
+    try {
+      // Update widget config with connection and query
+      await widgetsApi.update(workspaceId, dashboardId, selectedWidget.id, {
+        config: {
+          ...selectedWidget.config,
+          connectionId,
+          query,
+        },
+      })
+      await loadDashboardData()
+    } catch (err: any) {
+      console.error('Failed to save widget data:', err)
+    }
   }
 
   function handleEditDashboard() {
@@ -206,8 +232,10 @@ export default function DashboardDetailPage() {
             <Widget
               key={widget.id}
               widget={widget}
+              workspaceId={workspaceId}
               onEdit={handleEditWidget}
               onDelete={handleDeleteWidget}
+              onConfigureData={handleConfigureData}
             />
           ))}
         </div>
@@ -250,6 +278,12 @@ export default function DashboardDetailPage() {
         dashboard={dashboard}
         workspaceId={workspaceId}
         onSuccess={handleDashboardDeleted}
+      />
+      <ConfigureWidgetDataDialog
+        open={configureDataDialogOpen}
+        onOpenChange={setConfigureDataDialogOpen}
+        workspaceId={workspaceId}
+        onSave={handleSaveWidgetData}
       />
     </div>
   )

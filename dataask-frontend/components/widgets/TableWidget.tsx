@@ -1,32 +1,100 @@
 'use client'
 
-import { Table } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Table as TableIcon, Loader2, Database } from 'lucide-react'
 import { Widget } from '@/lib/api/widgets'
+import { queriesApi } from '@/lib/api/queries'
+import { Button } from '@/components/ui/button'
 
 interface TableWidgetProps {
   widget: Widget
+  workspaceId?: string
 }
 
-export function TableWidget({ widget }: TableWidgetProps) {
-  const columns = widget.config.columns || []
-  const rows = widget.config.rows || []
+export function TableWidget({ widget, workspaceId }: TableWidgetProps) {
+  const [data, setData] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  if (columns.length === 0 || rows.length === 0) {
+  const hasQuery = widget.config.connectionId && widget.config.query
+
+  useEffect(() => {
+    if (hasQuery && workspaceId) {
+      executeQuery()
+    }
+  }, [widget.config.connectionId, widget.config.query, workspaceId])
+
+  async function executeQuery() {
+    if (!workspaceId || !widget.config.connectionId || !widget.config.query) return
+
+    setIsLoading(true)
+    setError('')
+
+    try {
+      const result = await queriesApi.execute(
+        workspaceId,
+        widget.config.connectionId,
+        { query: widget.config.query }
+      )
+      setData(result.data)
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to load data')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  if (!hasQuery) {
     return (
       <div className="flex flex-col items-center justify-center h-full min-h-[200px] text-muted-foreground">
-        <Table className="h-12 w-12 mb-3 opacity-50" />
-        <p className="text-sm">Table widget</p>
-        <p className="text-xs mt-1 opacity-70">No data configured</p>
+        <Database className="h-12 w-12 mb-3 opacity-50" />
+        <p className="text-sm">No data source configured</p>
+        <p className="text-xs mt-1 opacity-70">
+          Edit widget to add a query
+        </p>
       </div>
     )
   }
 
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full min-h-[200px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <p className="text-sm text-muted-foreground mt-2">Loading data...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full min-h-[200px] text-destructive">
+        <p className="text-sm mb-2">{error}</p>
+        <Button onClick={executeQuery} size="sm" variant="outline">
+          Retry
+        </Button>
+      </div>
+    )
+  }
+
+  if (!data || !data.data || !Array.isArray(data.data) || data.data.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full min-h-[200px] text-muted-foreground">
+        <TableIcon className="h-12 w-12 mb-3 opacity-50" />
+        <p className="text-sm">No data</p>
+      </div>
+    )
+  }
+
+  // Extract columns from first row
+  const firstRow = data.data[0]
+  const columns = Object.keys(firstRow)
+
   return (
-    <div className="w-full overflow-auto">
+    <div className="w-full h-full overflow-auto">
       <table className="w-full text-sm">
-        <thead>
+        <thead className="sticky top-0 bg-background">
           <tr className="border-b border-border">
-            {columns.map((col: string, idx: number) => (
+            {columns.map((col, idx) => (
               <th key={idx} className="text-left p-2 font-medium">
                 {col}
               </th>
@@ -34,11 +102,13 @@ export function TableWidget({ widget }: TableWidgetProps) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((row: any[], rowIdx: number) => (
-            <tr key={rowIdx} className="border-b border-border">
-              {row.map((cell: any, cellIdx: number) => (
+          {data.data.map((row: any, rowIdx: number) => (
+            <tr key={rowIdx} className="border-b border-border hover:bg-muted/50">
+              {columns.map((col, cellIdx) => (
                 <td key={cellIdx} className="p-2">
-                  {cell}
+                  {row[col] !== null && row[col] !== undefined
+                    ? String(row[col])
+                    : <span className="text-muted-foreground italic">null</span>}
                 </td>
               ))}
             </tr>

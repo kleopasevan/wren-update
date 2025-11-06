@@ -10,19 +10,21 @@ import { FilterWidget } from './FilterWidget'
 
 interface WidgetProps {
   widget: WidgetType
+  workspaceId?: string
   onEdit: (widget: WidgetType) => void
   onDelete: (widget: WidgetType) => void
+  onConfigureData?: (widget: WidgetType) => void
 }
 
-export function Widget({ widget, onEdit, onDelete }: WidgetProps) {
+export function Widget({ widget, workspaceId, onEdit, onDelete, onConfigureData }: WidgetProps) {
   const renderWidgetContent = () => {
     switch (widget.type) {
       case 'chart':
-        return <ChartWidget widget={widget} />
+        return <ChartWidget widget={widget} workspaceId={workspaceId} />
       case 'metric':
         return <MetricWidget widget={widget} />
       case 'table':
-        return <TableWidget widget={widget} />
+        return <TableWidget widget={widget} workspaceId={workspaceId} />
       case 'text':
         return <TextWidget widget={widget} />
       case 'filter':
@@ -37,7 +39,12 @@ export function Widget({ widget, onEdit, onDelete }: WidgetProps) {
   }
 
   return (
-    <WidgetCard widget={widget} onEdit={onEdit} onDelete={onDelete}>
+    <WidgetCard
+      widget={widget}
+      onEdit={onEdit}
+      onDelete={onDelete}
+      onConfigureData={onConfigureData}
+    >
       {renderWidgetContent()}
     </WidgetCard>
   )
