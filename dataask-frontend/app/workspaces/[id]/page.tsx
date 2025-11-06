@@ -22,9 +22,9 @@ import { SchemaExplorerDialog } from '@/components/connections/SchemaExplorerDia
 import { CreateDashboardDialog } from '@/components/dashboards/CreateDashboardDialog'
 import { EditDashboardDialog } from '@/components/dashboards/EditDashboardDialog'
 import { DeleteDashboardDialog } from '@/components/dashboards/DeleteDashboardDialog'
-import { ArrowLeft, Plus, Database, MoreVertical, Pencil, Trash2, TestTube, LayoutDashboard, ListTree, FolderOpen } from 'lucide-react'
+import { ArrowLeft, Plus, Database, MoreVertical, Pencil, Trash2, TestTube, LayoutDashboard, ListTree, FolderOpen, History } from 'lucide-react'
 
-type Tab = 'connections' | 'dashboards' | 'queries' | 'settings'
+type Tab = 'connections' | 'dashboards' | 'queries' | 'history' | 'settings'
 
 export default function WorkspaceDetailPage() {
   const { user, isLoading: authLoading } = useAuth()
@@ -237,6 +237,16 @@ export default function WorkspaceDetailPage() {
               }`}
             >
               Saved Queries
+            </button>
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`pb-3 border-b-2 text-sm font-medium transition-colors ${
+                activeTab === 'history'
+                  ? 'border-primary text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Query History
             </button>
             <button
               onClick={() => setActiveTab('settings')}
@@ -502,6 +512,41 @@ export default function WorkspaceDetailPage() {
                 <Button onClick={() => router.push(`/workspaces/${workspaceId}/saved-queries`)}>
                   <FolderOpen className="mr-2 h-4 w-4" />
                   Browse Saved Queries
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Query History Tab */}
+        {activeTab === 'history' && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-semibold">Query Execution History</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  View all executed queries with performance metrics
+                </p>
+              </div>
+              <Button onClick={() => router.push(`/workspaces/${workspaceId}/query-history`)}>
+                <History className="mr-2 h-4 w-4" />
+                View Full History
+              </Button>
+            </div>
+
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <div className="rounded-full bg-muted p-3 mb-4">
+                  <History className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">Query Execution History</h3>
+                <p className="text-sm text-muted-foreground text-center mb-4 max-w-sm">
+                  All executed queries are automatically tracked with execution time, status,
+                  and SQL details. Use this to debug issues or re-run queries.
+                </p>
+                <Button onClick={() => router.push(`/workspaces/${workspaceId}/query-history`)}>
+                  <History className="mr-2 h-4 w-4" />
+                  Browse Query History
                 </Button>
               </CardContent>
             </Card>

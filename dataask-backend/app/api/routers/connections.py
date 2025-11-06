@@ -1,5 +1,6 @@
 """Connection API endpoints."""
 import uuid
+import time
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -11,6 +12,7 @@ from app.core.database import get_db
 from app.models.user import User
 from app.models.workspace import Workspace
 from app.models.connection import Connection
+from app.models.query_history import QueryHistory
 from app.schemas.connection import (
     ConnectionCreate,
     ConnectionResponse,
@@ -272,41 +274,79 @@ async def execute_query(
 
     connection_service = ConnectionService(db)
 
-    # Execute either visual query or raw SQL
-    if request.query:
-        # Build SQL from visual query definition
-        sql, data = await connection_service.build_and_execute_query(
-            connection_id=connection_id,
-            workspace_id=workspace_id,
-            table=request.query.table,
-            columns=request.query.columns,
-            joins=[j.model_dump() for j in request.query.joins] if request.query.joins else None,
-            filters=[f.model_dump() for f in request.query.filters] if request.query.filters else None,
-            group_by=request.query.group_by,
-            order_by=[o.model_dump() for o in request.query.order_by] if request.query.order_by else None,
-            limit=request.query.limit or request.limit,
-        )
-    elif request.sql:
-        # Execute raw SQL
-        sql = request.sql
-        data = await connection_service.execute_query(
-            connection_id=connection_id,
-            workspace_id=workspace_id,
-            sql=sql,
-            limit=request.limit,
-        )
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Either 'query' or 'sql' must be provided",
-        )
+    # Track execution time
+    start_time = time.time()
+    sql = None
+    data = None
+    error_message = None
+    status_str = "success"
 
-    # Count rows if data has them
-    row_count = None
-    if isinstance(data, dict) and "data" in data:
-        row_count = len(data["data"])
-    elif isinstance(data, list):
-        row_count = len(data)
+    try:
+        # Execute either visual query or raw SQL
+        if request.query:
+            # Build SQL from visual query definition
+            sql, data = await connection_service.build_and_execute_query(
+                connection_id=connection_id,
+                workspace_id=workspace_id,
+                table=request.query.table,
+                columns=request.query.columns,
+                joins=[j.model_dump() for j in request.query.joins] if request.query.joins else None,
+                filters=[f.model_dump() for f in request.query.filters] if request.query.filters else None,
+                group_by=request.query.group_by,
+                order_by=[o.model_dump() for o in request.query.order_by] if request.query.order_by else None,
+                limit=request.query.limit or request.limit,
+            )
+        elif request.sql:
+            # Execute raw SQL
+            sql = request.sql
+            data = await connection_service.execute_query(
+                connection_id=connection_id,
+                workspace_id=workspace_id,
+                sql=sql,
+                limit=request.limit,
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Either 'query' or 'sql' must be provided",
+            )
+
+        # Count rows if data has them
+        row_count = None
+        if isinstance(data, dict) and "data" in data:
+            row_count = len(data["data"])
+        elif isinstance(data, list):
+            row_count = len(data)
+
+    except Exception as e:
+        status_str = "error"
+        error_message = str(e)
+        row_count = None
+        raise
+
+    finally:
+        # Calculate execution time
+        end_time = time.time()
+        execution_time_ms = (end_time - start_time) * 1000
+
+        # Create query history entry
+        query_type = "visual" if request.query else "sql"
+        query_definition = request.query.model_dump() if request.query else None
+
+        history_entry = QueryHistory(
+            workspace_id=workspace_id,
+            connection_id=connection_id,
+            user_id=current_user.id,
+            query_type=query_type,
+            query_definition=query_definition,
+            sql=sql or "",
+            status=status_str,
+            error_message=error_message,
+            row_count=row_count,
+            execution_time_ms=execution_time_ms,
+        )
+        db.add(history_entry)
+        await db.commit()
 
     return {
         "sql": sql,
