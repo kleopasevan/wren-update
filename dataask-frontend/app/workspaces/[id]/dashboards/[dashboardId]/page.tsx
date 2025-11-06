@@ -13,6 +13,7 @@ import { DeleteWidgetDialog } from '@/components/widgets/DeleteWidgetDialog'
 import { ConfigureWidgetDataDialog } from '@/components/widgets/ConfigureWidgetDataDialog'
 import { EditDashboardDialog } from '@/components/dashboards/EditDashboardDialog'
 import { DeleteDashboardDialog } from '@/components/dashboards/DeleteDashboardDialog'
+import { RefreshControls, RefreshInterval } from '@/components/dashboards/RefreshControls'
 import { QueryDefinition } from '@/lib/api/queries'
 import {
   ArrowLeft,
@@ -41,6 +42,12 @@ export default function DashboardDetailPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
 
+  // Refresh state
+  const [refreshInterval, setRefreshInterval] = useState<RefreshInterval>(0)
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
+
   // Widget dialog states
   const [createWidgetDialogOpen, setCreateWidgetDialogOpen] = useState(false)
   const [editWidgetDialogOpen, setEditWidgetDialogOpen] = useState(false)
@@ -66,10 +73,53 @@ export default function DashboardDetailPage() {
       ])
       setDashboard(dashboardData)
       setWidgets(widgetsData)
+
+      // Load refresh interval from dashboard settings
+      if (dashboardData.settings?.refreshInterval !== undefined) {
+        setRefreshInterval(dashboardData.settings.refreshInterval as RefreshInterval)
+      }
+
+      setLastUpdated(new Date())
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to load dashboard')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  async function handleRefresh() {
+    if (isRefreshing) return
+
+    setIsRefreshing(true)
+    try {
+      // Trigger widget refresh by updating the refresh key
+      setRefreshKey((prev) => prev + 1)
+      setLastUpdated(new Date())
+
+      // Wait a bit for widgets to refresh
+      await new Promise((resolve) => setTimeout(resolve, 500))
+    } catch (err: any) {
+      console.error('Refresh failed:', err)
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
+  async function handleRefreshIntervalChange(interval: RefreshInterval) {
+    setRefreshInterval(interval)
+
+    if (!dashboard) return
+
+    try {
+      // Save refresh interval to dashboard settings
+      await dashboardsApi.update(workspaceId, dashboardId, {
+        settings: {
+          ...dashboard.settings,
+          refreshInterval: interval,
+        },
+      })
+    } catch (err: any) {
+      console.error('Failed to save refresh interval:', err)
     }
   }
 
@@ -164,7 +214,7 @@ export default function DashboardDetailPage() {
   return (
     <div className="container mx-auto p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-4">
           <Button
             variant="outline"
@@ -210,6 +260,19 @@ export default function DashboardDetailPage() {
         </div>
       </div>
 
+      {/* Refresh Controls */}
+      {widgets.length > 0 && (
+        <div className="flex justify-end mb-4">
+          <RefreshControls
+            onRefresh={handleRefresh}
+            refreshInterval={refreshInterval}
+            onRefreshIntervalChange={handleRefreshIntervalChange}
+            lastUpdated={lastUpdated}
+            isRefreshing={isRefreshing}
+          />
+        </div>
+      )}
+
       {/* Widgets */}
       {widgets.length === 0 ? (
         <Card>
@@ -230,7 +293,7 @@ export default function DashboardDetailPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {widgets.map((widget) => (
             <Widget
-              key={widget.id}
+              key={`${widget.id}-${refreshKey}`}
               widget={widget}
               workspaceId={workspaceId}
               onEdit={handleEditWidget}
