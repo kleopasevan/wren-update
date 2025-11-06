@@ -18,10 +18,27 @@ class QueryOrderBy(BaseModel):
     direction: Literal["ASC", "DESC"] = "ASC"
 
 
+class QueryJoinCondition(BaseModel):
+    """Join condition (e.g., table1.id = table2.foreign_id)."""
+
+    left_column: str = Field(..., description="Left side column (e.g., 'customers.id')")
+    right_column: str = Field(..., description="Right side column (e.g., 'orders.customer_id')")
+    operator: Literal["=", "!=", ">", ">=", "<", "<="] = "="
+
+
+class QueryJoin(BaseModel):
+    """Join definition for multi-table queries."""
+
+    table: str = Field(..., description="Table to join")
+    join_type: Literal["INNER", "LEFT", "RIGHT", "FULL"] = Field("INNER", description="Type of join")
+    conditions: list[QueryJoinCondition] = Field(..., description="Join conditions")
+
+
 class QueryDefinition(BaseModel):
     """Visual query builder definition."""
 
-    table: str = Field(..., description="Table name to query")
+    table: str = Field(..., description="Primary table name to query")
+    joins: list[QueryJoin] | None = Field(None, description="Tables to join")
     columns: list[str] | None = Field(None, description="Columns to select (None = SELECT *)")
     filters: list[QueryFilter] | None = Field(None, description="WHERE clause filters")
     group_by: list[str] | None = Field(None, description="GROUP BY columns")

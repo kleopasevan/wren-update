@@ -210,6 +210,7 @@ class IbisClient:
         self,
         table: str,
         columns: list[str] | None = None,
+        joins: list[dict] | None = None,
         filters: list[dict] | None = None,
         group_by: list[str] | None = None,
         order_by: list[dict] | None = None,
@@ -219,8 +220,9 @@ class IbisClient:
         Build a SQL query from components.
 
         Args:
-            table: Table name
+            table: Primary table name
             columns: List of column names (None = SELECT *)
+            joins: List of join dicts with {table, join_type, conditions}
             filters: List of filter dicts with {column, operator, value}
             group_by: List of columns to group by
             order_by: List of order dicts with {column, direction}
@@ -236,6 +238,25 @@ class IbisClient:
             cols_str = "*"
 
         sql = f"SELECT {cols_str} FROM {table}"
+
+        # JOIN clauses
+        if joins:
+            for join in joins:
+                join_table = join["table"]
+                join_type = join.get("join_type", "INNER")
+                conditions = join.get("conditions", [])
+
+                # Build JOIN ON conditions
+                if conditions:
+                    condition_strs = []
+                    for cond in conditions:
+                        left_col = cond["left_column"]
+                        right_col = cond["right_column"]
+                        operator = cond.get("operator", "=")
+                        condition_strs.append(f"{left_col} {operator} {right_col}")
+
+                    on_clause = " AND ".join(condition_strs)
+                    sql += f" {join_type} JOIN {join_table} ON {on_clause}"
 
         # WHERE clause
         if filters:

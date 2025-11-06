@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Loader2, Play, Plus, Trash2, Code, Sparkles, Blocks } from 'lucide-react'
 import { connectionsApi, Table } from '@/lib/api/connections'
-import { queriesApi, QueryDefinition, QueryFilter, QueryOrderBy } from '@/lib/api/queries'
+import { queriesApi, QueryDefinition, QueryFilter, QueryOrderBy, QueryJoin } from '@/lib/api/queries'
 import {
   Dialog,
   DialogContent,
@@ -24,6 +24,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { AskAI } from '@/components/ai/AskAI'
+import { JoinBuilder } from '@/components/queries/JoinBuilder'
 
 type QueryMode = 'visual' | 'ai'
 
@@ -38,6 +39,7 @@ export function QueryBuilder({ workspaceId, connectionId, onSave }: QueryBuilder
   const [tables, setTables] = useState<Table[]>([])
   const [selectedTable, setSelectedTable] = useState<Table | null>(null)
   const [selectedColumns, setSelectedColumns] = useState<string[]>([])
+  const [joins, setJoins] = useState<QueryJoin[]>([])
   const [filters, setFilters] = useState<QueryFilter[]>([])
   const [orderBy, setOrderBy] = useState<QueryOrderBy[]>([])
   const [limit, setLimit] = useState<number>(100)
@@ -75,6 +77,7 @@ export function QueryBuilder({ workspaceId, connectionId, onSave }: QueryBuilder
     const table = tables.find((t) => t.name === tableName)
     setSelectedTable(table || null)
     setSelectedColumns([])
+    setJoins([])
     setFilters([])
     setOrderBy([])
   }
@@ -139,6 +142,7 @@ export function QueryBuilder({ workspaceId, connectionId, onSave }: QueryBuilder
     try {
       const query: QueryDefinition = {
         table: selectedTable.name,
+        joins: joins.length > 0 ? joins : undefined,
         columns: selectedColumns.length > 0 ? selectedColumns : undefined,
         filters: filters.length > 0 ? filters : undefined,
         order_by: orderBy.length > 0 ? orderBy : undefined,
@@ -162,6 +166,7 @@ export function QueryBuilder({ workspaceId, connectionId, onSave }: QueryBuilder
 
     const query: QueryDefinition = {
       table: selectedTable.name,
+      joins: joins.length > 0 ? joins : undefined,
       columns: selectedColumns.length > 0 ? selectedColumns : undefined,
       filters: filters.length > 0 ? filters : undefined,
       order_by: orderBy.length > 0 ? orderBy : undefined,
@@ -349,6 +354,14 @@ export function QueryBuilder({ workspaceId, connectionId, onSave }: QueryBuilder
                   ))}
                 </div>
               </div>
+
+              {/* Join Builder */}
+              <JoinBuilder
+                primaryTable={selectedTable}
+                availableTables={tables}
+                joins={joins}
+                onChange={setJoins}
+              />
 
               {/* Filters */}
               <div className="space-y-2">

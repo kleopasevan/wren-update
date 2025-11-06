@@ -239,6 +239,7 @@ class ConnectionService:
         workspace_id: uuid.UUID,
         table: str,
         columns: Optional[list[str]] = None,
+        joins: Optional[list[dict]] = None,
         filters: Optional[list[dict]] = None,
         group_by: Optional[list[str]] = None,
         order_by: Optional[list[dict]] = None,
@@ -252,6 +253,7 @@ class ConnectionService:
         sql = ibis_client.build_sql_query(
             table=table,
             columns=columns,
+            joins=joins,
             filters=filters,
             group_by=group_by,
             order_by=order_by,

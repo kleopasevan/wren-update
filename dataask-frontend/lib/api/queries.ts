@@ -11,8 +11,21 @@ export interface QueryOrderBy {
   direction: 'ASC' | 'DESC'
 }
 
+export interface QueryJoinCondition {
+  left_column: string
+  right_column: string
+  operator?: '=' | '!=' | '>' | '>=' | '<' | '<='
+}
+
+export interface QueryJoin {
+  table: string
+  join_type: 'INNER' | 'LEFT' | 'RIGHT' | 'FULL'
+  conditions: QueryJoinCondition[]
+}
+
 export interface QueryDefinition {
   table: string
+  joins?: QueryJoin[]
   columns?: string[]
   filters?: QueryFilter[]
   group_by?: string[]

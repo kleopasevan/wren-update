@@ -280,6 +280,7 @@ async def execute_query(
             workspace_id=workspace_id,
             table=request.query.table,
             columns=request.query.columns,
+            joins=[j.model_dump() for j in request.query.joins] if request.query.joins else None,
             filters=[f.model_dump() for f in request.query.filters] if request.query.filters else None,
             group_by=request.query.group_by,
             order_by=[o.model_dump() for o in request.query.order_by] if request.query.order_by else None,
