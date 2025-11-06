@@ -18,10 +18,11 @@ import {
 import { CreateConnectionDialog } from '@/components/connections/CreateConnectionDialog'
 import { EditConnectionDialog } from '@/components/connections/EditConnectionDialog'
 import { DeleteConnectionDialog } from '@/components/connections/DeleteConnectionDialog'
+import { SchemaExplorerDialog } from '@/components/connections/SchemaExplorerDialog'
 import { CreateDashboardDialog } from '@/components/dashboards/CreateDashboardDialog'
 import { EditDashboardDialog } from '@/components/dashboards/EditDashboardDialog'
 import { DeleteDashboardDialog } from '@/components/dashboards/DeleteDashboardDialog'
-import { ArrowLeft, Plus, Database, MoreVertical, Pencil, Trash2, TestTube, LayoutDashboard } from 'lucide-react'
+import { ArrowLeft, Plus, Database, MoreVertical, Pencil, Trash2, TestTube, LayoutDashboard, ListTree } from 'lucide-react'
 
 type Tab = 'connections' | 'dashboards' | 'settings'
 
@@ -42,6 +43,7 @@ export default function WorkspaceDetailPage() {
   const [createConnectionDialogOpen, setCreateConnectionDialogOpen] = useState(false)
   const [editConnectionDialogOpen, setEditConnectionDialogOpen] = useState(false)
   const [deleteConnectionDialogOpen, setDeleteConnectionDialogOpen] = useState(false)
+  const [schemaExplorerDialogOpen, setSchemaExplorerDialogOpen] = useState(false)
   const [selectedConnection, setSelectedConnection] = useState<Connection | null>(null)
   const [testingConnectionId, setTestingConnectionId] = useState<string | null>(null)
 
@@ -125,6 +127,12 @@ export default function WorkspaceDetailPage() {
     } finally {
       setTestingConnectionId(null)
     }
+  }
+
+  function handleViewSchema(connection: Connection, e: React.MouseEvent) {
+    e.stopPropagation()
+    setSelectedConnection(connection)
+    setSchemaExplorerDialogOpen(true)
   }
 
   // Dashboard handlers
@@ -306,6 +314,10 @@ export default function WorkspaceDetailPage() {
                             >
                               <TestTube className="mr-2 h-4 w-4" />
                               {testingConnectionId === connection.id ? 'Testing...' : 'Test Connection'}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => handleViewSchema(connection, e as any)}>
+                              <ListTree className="mr-2 h-4 w-4" />
+                              View Schema
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={(e) => handleEditConnection(connection, e as any)}>
                               <Pencil className="mr-2 h-4 w-4" />
@@ -494,6 +506,16 @@ export default function WorkspaceDetailPage() {
         connection={selectedConnection}
         onSuccess={loadConnections}
       />
+
+      {selectedConnection && (
+        <SchemaExplorerDialog
+          open={schemaExplorerDialogOpen}
+          onOpenChange={setSchemaExplorerDialogOpen}
+          workspaceId={workspaceId}
+          connectionId={selectedConnection.id}
+          connectionName={selectedConnection.name}
+        />
+      )}
 
       {/* Dashboard Dialogs */}
       <CreateDashboardDialog
