@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routers import auth, health, workspaces, connections, dashboards, saved_queries, query_history
+from app.api.routers import auth, health, workspaces, connections, dashboards, saved_queries, query_history, scheduled_queries
 from app.config import settings
 
 app = FastAPI(
@@ -28,6 +28,7 @@ app.include_router(connections.router, prefix="/api/v1", tags=["connections"])
 app.include_router(dashboards.router, prefix="/api/v1", tags=["dashboards"])
 app.include_router(saved_queries.router, prefix="/api/v1", tags=["saved-queries"])
 app.include_router(query_history.router, prefix="/api/v1", tags=["query-history"])
+app.include_router(scheduled_queries.router, prefix="/api/v1", tags=["scheduled-queries"])
 
 
 @app.on_event("startup")
