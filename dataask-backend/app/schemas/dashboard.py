@@ -20,6 +20,7 @@ class DashboardCreate(DashboardBase):
     workspace_id: uuid.UUID
     layout: list = []
     settings: dict = {}
+    parameters: list = []
 
 
 class DashboardUpdate(BaseModel):
@@ -29,6 +30,7 @@ class DashboardUpdate(BaseModel):
     description: Optional[str] = None
     layout: Optional[list] = None
     settings: Optional[dict] = None
+    parameters: Optional[list] = None
 
 
 class DashboardResponse(DashboardBase):
@@ -38,6 +40,7 @@ class DashboardResponse(DashboardBase):
     workspace_id: uuid.UUID
     layout: list
     settings: dict
+    parameters: list
     created_by: Optional[uuid.UUID] = None
     created_at: datetime
     updated_at: datetime

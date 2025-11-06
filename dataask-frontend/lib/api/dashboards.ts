@@ -11,6 +11,7 @@ export interface Dashboard {
   description?: string
   layout: any[]
   settings: Record<string, any>
+  parameters: any[]
   created_by?: string
   created_at: string
   updated_at: string
@@ -29,6 +30,7 @@ export interface UpdateDashboardData {
   description?: string
   layout?: any[]
   settings?: Record<string, any>
+  parameters?: any[]
 }
 
 export interface Widget {

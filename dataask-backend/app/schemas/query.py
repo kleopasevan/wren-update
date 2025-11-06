@@ -52,6 +52,7 @@ class QueryExecuteRequest(BaseModel):
     query: QueryDefinition | None = Field(None, description="Visual query definition")
     sql: str | None = Field(None, description="Raw SQL query")
     limit: int | None = Field(None, description="Result limit", ge=1, le=10000)
+    parameter_values: dict[str, Any] | None = Field(None, description="Parameter values for substitution")
 
 
 class QueryExecuteResponse(BaseModel):

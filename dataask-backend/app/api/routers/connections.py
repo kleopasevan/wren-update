@@ -29,6 +29,7 @@ from app.schemas.ai_query import (
 )
 from app.services.connection_service import ConnectionService
 from app.clients.wren_ai_client import wren_ai_client
+from app.utils.parameters import substitute_parameters, substitute_sql
 
 router = APIRouter()
 
@@ -284,21 +285,30 @@ async def execute_query(
     try:
         # Execute either visual query or raw SQL
         if request.query:
+            # Apply parameter substitution if provided
+            query_def = request.query.model_dump()
+            if request.parameter_values:
+                query_def = substitute_parameters(query_def, request.parameter_values)
+
             # Build SQL from visual query definition
             sql, data = await connection_service.build_and_execute_query(
                 connection_id=connection_id,
                 workspace_id=workspace_id,
-                table=request.query.table,
-                columns=request.query.columns,
-                joins=[j.model_dump() for j in request.query.joins] if request.query.joins else None,
-                filters=[f.model_dump() for f in request.query.filters] if request.query.filters else None,
-                group_by=request.query.group_by,
-                order_by=[o.model_dump() for o in request.query.order_by] if request.query.order_by else None,
-                limit=request.query.limit or request.limit,
+                table=query_def["table"],
+                columns=query_def.get("columns"),
+                joins=query_def.get("joins"),
+                filters=query_def.get("filters"),
+                group_by=query_def.get("group_by"),
+                order_by=query_def.get("order_by"),
+                limit=query_def.get("limit") or request.limit,
             )
         elif request.sql:
-            # Execute raw SQL
+            # Apply parameter substitution to raw SQL if provided
             sql = request.sql
+            if request.parameter_values:
+                sql = substitute_sql(sql, request.parameter_values)
+
+            # Execute raw SQL
             data = await connection_service.execute_query(
                 connection_id=connection_id,
                 workspace_id=workspace_id,

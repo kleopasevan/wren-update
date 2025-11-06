@@ -25,6 +25,7 @@ class Dashboard(Base):
     description: Mapped[str | None] = mapped_column(Text)
     layout: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
     settings: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    parameters: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
     created_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id")
     )

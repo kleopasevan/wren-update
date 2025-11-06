@@ -15,6 +15,9 @@ import { EditDashboardDialog } from '@/components/dashboards/EditDashboardDialog
 import { DeleteDashboardDialog } from '@/components/dashboards/DeleteDashboardDialog'
 import { RefreshControls, RefreshInterval } from '@/components/dashboards/RefreshControls'
 import { DashboardFiltersProvider } from '@/contexts/DashboardFiltersContext'
+import { ParameterValuesProvider } from '@/contexts/ParameterValuesContext'
+import { DashboardParametersDialog, DashboardParameter } from '@/components/dashboards/DashboardParametersDialog'
+import { ParameterControls } from '@/components/dashboards/ParameterControls'
 import { QueryDefinition } from '@/lib/api/queries'
 import { exportToPDF, generateFilename } from '@/lib/utils/export'
 import {
@@ -25,6 +28,7 @@ import {
   Trash2,
   LayoutDashboard,
   Download,
+  Settings2,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -63,6 +67,10 @@ export default function DashboardDetailPage() {
   // Dashboard dialog states
   const [editDashboardDialogOpen, setEditDashboardDialogOpen] = useState(false)
   const [deleteDashboardDialogOpen, setDeleteDashboardDialogOpen] = useState(false)
+  const [parametersDialogOpen, setParametersDialogOpen] = useState(false)
+
+  // Parameter state
+  const [parameterValues, setParameterValues] = useState<Record<string, any>>({})
 
   useEffect(() => {
     loadDashboardData()
@@ -85,6 +93,17 @@ export default function DashboardDetailPage() {
       }
 
       setLastUpdated(new Date())
+
+      // Initialize parameter values with defaults
+      if (dashboardData.parameters && dashboardData.parameters.length > 0) {
+        const defaultValues: Record<string, any> = {}
+        dashboardData.parameters.forEach((param: DashboardParameter) => {
+          if (param.defaultValue !== undefined) {
+            defaultValues[param.name] = param.defaultValue
+          }
+        })
+        setParameterValues(defaultValues)
+      }
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to load dashboard')
     } finally {
@@ -173,6 +192,15 @@ export default function DashboardDetailPage() {
     router.push(`/workspaces/${workspaceId}`)
   }
 
+  async function handleSaveParameters(parameters: DashboardParameter[]) {
+    try {
+      await dashboardsApi.update(workspaceId, dashboardId, { parameters })
+      await loadDashboardData()
+    } catch (err: any) {
+      console.error('Failed to save parameters:', err)
+    }
+  }
+
   async function handleExportDashboard() {
     if (!widgetsContainerRef.current || widgets.length === 0 || !dashboard) {
       return
@@ -249,8 +277,9 @@ export default function DashboardDetailPage() {
   }
 
   return (
-    <DashboardFiltersProvider>
-      <div className="container mx-auto p-6">
+    <ParameterValuesProvider>
+      <DashboardFiltersProvider>
+        <div className="container mx-auto p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-4">
@@ -294,6 +323,10 @@ export default function DashboardDetailPage() {
                 <Pencil className="mr-2 h-4 w-4" />
                 Edit Dashboard
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setParametersDialogOpen(true)}>
+                <Settings2 className="mr-2 h-4 w-4" />
+                Configure Parameters
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={handleDeleteDashboard}
@@ -318,6 +351,15 @@ export default function DashboardDetailPage() {
             isRefreshing={isRefreshing}
           />
         </div>
+      )}
+
+      {/* Parameter Controls */}
+      {dashboard.parameters && dashboard.parameters.length > 0 && (
+        <ParameterControls
+          parameters={dashboard.parameters}
+          values={parameterValues}
+          onChange={setParameterValues}
+        />
       )}
 
       {/* Widgets */}
@@ -396,7 +438,14 @@ export default function DashboardDetailPage() {
         workspaceId={workspaceId}
         onSave={handleSaveWidgetData}
       />
-      </div>
-    </DashboardFiltersProvider>
+      <DashboardParametersDialog
+        open={parametersDialogOpen}
+        onOpenChange={setParametersDialogOpen}
+        parameters={dashboard?.parameters || []}
+        onSave={handleSaveParameters}
+      />
+        </div>
+      </DashboardFiltersProvider>
+    </ParameterValuesProvider>
   )
 }
