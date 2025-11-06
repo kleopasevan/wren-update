@@ -7,7 +7,17 @@ import { workspacesApi, type Workspace } from '@/lib/api/workspaces'
 import { connectionsApi, type Connection } from '@/lib/api/connections'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Plus, Database } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { CreateConnectionDialog } from '@/components/connections/CreateConnectionDialog'
+import { EditConnectionDialog } from '@/components/connections/EditConnectionDialog'
+import { DeleteConnectionDialog } from '@/components/connections/DeleteConnectionDialog'
+import { ArrowLeft, Plus, Database, MoreVertical, Pencil, Trash2, TestTube } from 'lucide-react'
 
 export default function WorkspaceDetailPage() {
   const { user, isLoading: authLoading } = useAuth()
@@ -19,6 +29,15 @@ export default function WorkspaceDetailPage() {
   const [connections, setConnections] = useState<Connection[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
+
+  // Dialog states
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [selectedConnection, setSelectedConnection] = useState<Connection | null>(null)
+
+  // Test connection loading state
+  const [testingConnectionId, setTestingConnectionId] = useState<string | null>(null)
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -44,12 +63,51 @@ export default function WorkspaceDetailPage() {
       setWorkspace(workspaceData)
 
       // Load connections
-      const connectionsData = await connectionsApi.list(workspaceId)
-      setConnections(connectionsData)
+      await loadConnections()
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to load workspace')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  async function loadConnections() {
+    const connectionsData = await connectionsApi.list(workspaceId)
+    setConnections(connectionsData)
+  }
+
+  function handleEditClick(connection: Connection, e: React.MouseEvent) {
+    e.stopPropagation()
+    setSelectedConnection(connection)
+    setEditDialogOpen(true)
+  }
+
+  function handleDeleteClick(connection: Connection, e: React.MouseEvent) {
+    e.stopPropagation()
+    setSelectedConnection(connection)
+    setDeleteDialogOpen(true)
+  }
+
+  async function handleTestConnection(connection: Connection, e: React.MouseEvent) {
+    e.stopPropagation()
+    setTestingConnectionId(connection.id)
+
+    try {
+      const result = await connectionsApi.test(workspaceId, connection.id)
+
+      // Show result in alert for now (could use toast in future)
+      if (result.status === 'success') {
+        alert(`Connection test successful!\n\n${result.message}`)
+      } else {
+        alert(`Connection test failed!\n\n${result.message}`)
+      }
+
+      // Reload connections to get updated test status
+      await loadConnections()
+    } catch (err: any) {
+      alert(`Connection test failed!\n\n${err.response?.data?.detail || 'Unknown error'}`)
+    } finally {
+      setTestingConnectionId(null)
     }
   }
 
@@ -130,10 +188,7 @@ export default function WorkspaceDetailPage() {
                 Connect to your data sources
               </p>
             </div>
-            <Button onClick={() => {
-              // TODO: Open create connection dialog
-              alert('Create connection dialog will be implemented next')
-            }}>
+            <Button onClick={() => setCreateDialogOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Add Connection
             </Button>
@@ -158,9 +213,7 @@ export default function WorkspaceDetailPage() {
                   Connect to your databases like PostgreSQL, MySQL, BigQuery, Snowflake, and more
                   to start analyzing your data.
                 </p>
-                <Button onClick={() => {
-                  alert('Create connection dialog will be implemented next')
-                }}>
+                <Button onClick={() => setCreateDialogOpen(true)}>
                   <Plus className="mr-2 h-4 w-4" />
                   Add Your First Connection
                 </Button>
@@ -172,7 +225,7 @@ export default function WorkspaceDetailPage() {
           {!isLoading && connections.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {connections.map((connection) => (
-                <Card key={connection.id} className="hover:bg-muted/50 transition-colors">
+                <Card key={connection.id} className="hover:bg-muted/50 transition-colors relative group">
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -183,6 +236,39 @@ export default function WorkspaceDetailPage() {
                           </CardDescription>
                         )}
                       </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                            <span className="sr-only">Open menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={(e) => handleTestConnection(connection, e as any)}
+                            disabled={testingConnectionId === connection.id}
+                          >
+                            <TestTube className="mr-2 h-4 w-4" />
+                            {testingConnectionId === connection.id ? 'Testing...' : 'Test Connection'}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => handleEditClick(connection, e as any)}>
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={(e) => handleDeleteClick(connection, e as any)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -202,6 +288,11 @@ export default function WorkspaceDetailPage() {
                         </div>
                       </div>
                     </div>
+                    {connection.last_tested_at && (
+                      <div className="mt-2 text-xs text-muted-foreground">
+                        Last tested: {new Date(connection.last_tested_at).toLocaleDateString()}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -209,6 +300,30 @@ export default function WorkspaceDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Dialogs */}
+      <CreateConnectionDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        workspaceId={workspaceId}
+        onSuccess={loadConnections}
+      />
+
+      <EditConnectionDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        workspaceId={workspaceId}
+        connection={selectedConnection}
+        onSuccess={loadConnections}
+      />
+
+      <DeleteConnectionDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        workspaceId={workspaceId}
+        connection={selectedConnection}
+        onSuccess={loadConnections}
+      />
     </div>
   )
 }
