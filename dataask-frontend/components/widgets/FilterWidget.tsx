@@ -54,9 +54,8 @@ export function FilterWidget({ widget, workspaceId }: FilterWidgetProps) {
       // Extract unique values from the query results
       if (result.data && result.data.data && result.data.data.length > 0) {
         const firstColumn = Object.keys(result.data.data[0])[0]
-        const uniqueValues = [
-          ...new Set(result.data.data.map((row: any) => String(row[firstColumn]))),
-        ]
+        const values: string[] = result.data.data.map((row: any) => String(row[firstColumn]))
+        const uniqueValues: string[] = Array.from(new Set(values))
         setOptions(uniqueValues)
       }
     } catch (err) {

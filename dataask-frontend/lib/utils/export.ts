@@ -2,7 +2,7 @@
  * Export utilities for CSV, PNG, and PDF exports
  */
 
-import { parse as json2csv } from 'papaparse'
+import { unparse as json2csv } from 'papaparse'
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
 
