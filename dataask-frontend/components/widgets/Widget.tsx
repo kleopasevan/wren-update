@@ -22,7 +22,7 @@ export function Widget({ widget, workspaceId, onEdit, onDelete, onConfigureData 
       case 'chart':
         return <ChartWidget widget={widget} workspaceId={workspaceId} />
       case 'metric':
-        return <MetricWidget widget={widget} />
+        return <MetricWidget widget={widget} workspaceId={workspaceId} />
       case 'table':
         return <TableWidget widget={widget} workspaceId={workspaceId} />
       case 'text':

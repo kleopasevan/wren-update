@@ -5,6 +5,9 @@ import { BarChart3, Loader2, Database } from 'lucide-react'
 import { Widget } from '@/lib/api/widgets'
 import { queriesApi } from '@/lib/api/queries'
 import { Button } from '@/components/ui/button'
+import { BarChartComponent } from '@/components/charts/BarChartComponent'
+import { LineChartComponent } from '@/components/charts/LineChartComponent'
+import { PieChartComponent } from '@/components/charts/PieChartComponent'
 
 interface ChartWidgetProps {
   widget: Widget
@@ -76,7 +79,7 @@ export function ChartWidget({ widget, workspaceId }: ChartWidgetProps) {
     )
   }
 
-  if (!data) {
+  if (!data || !data.data || !Array.isArray(data.data) || data.data.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full min-h-[200px] text-muted-foreground">
         <BarChart3 className="h-12 w-12 mb-3 opacity-50" />
@@ -85,20 +88,34 @@ export function ChartWidget({ widget, workspaceId }: ChartWidgetProps) {
     )
   }
 
-  // Simple data display for now (will be replaced with actual charts)
   const chartType = widget.config.chartType || 'bar'
-  const rowCount = Array.isArray(data?.data) ? data.data.length : 0
+  const chartData = data.data
+
+  // Auto-detect keys from data if not configured
+  const firstRow = chartData[0]
+  const keys = Object.keys(firstRow)
+
+  // Use configured keys or auto-detect
+  const xKey = widget.config.xKey || keys[0]
+  const yKey = widget.config.yKey || keys[1] || keys[0]
+
+  // Render appropriate chart type
+  const renderChart = () => {
+    switch (chartType) {
+      case 'bar':
+        return <BarChartComponent data={chartData} xKey={xKey} yKey={yKey} />
+      case 'line':
+        return <LineChartComponent data={chartData} xKey={xKey} yKey={yKey} />
+      case 'pie':
+        return <PieChartComponent data={chartData} nameKey={xKey} valueKey={yKey} />
+      default:
+        return <BarChartComponent data={chartData} xKey={xKey} yKey={yKey} />
+    }
+  }
 
   return (
-    <div className="flex flex-col items-center justify-center h-full min-h-[200px]">
-      <BarChart3 className="h-12 w-12 mb-3 text-primary" />
-      <p className="text-sm font-medium">{chartType.toUpperCase()} Chart</p>
-      <p className="text-xs text-muted-foreground mt-1">
-        {rowCount} data points loaded
-      </p>
-      <p className="text-xs text-muted-foreground mt-1">
-        Chart visualization coming soon
-      </p>
+    <div className="w-full h-full min-h-[250px]">
+      {renderChart()}
     </div>
   )
 }

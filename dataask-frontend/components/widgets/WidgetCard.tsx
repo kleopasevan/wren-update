@@ -21,8 +21,8 @@ interface WidgetCardProps {
 }
 
 export function WidgetCard({ widget, onEdit, onDelete, onConfigureData, children }: WidgetCardProps) {
-  // Only show Configure Data for chart and table widgets
-  const showConfigureData = onConfigureData && (widget.type === 'chart' || widget.type === 'table')
+  // Only show Configure Data for chart, table, and metric widgets
+  const showConfigureData = onConfigureData && (widget.type === 'chart' || widget.type === 'table' || widget.type === 'metric')
 
   return (
     <Card className="h-full flex flex-col group">
