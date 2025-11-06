@@ -22,10 +22,30 @@ class Connection(Base):
         UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    type: Mapped[str] = mapped_column(String(50), nullable=False)  # postgresql, mysql, etc.
-    config: Mapped[dict] = mapped_column(JSONB, nullable=False)  # Encrypted credentials
-    status: Mapped[str] = mapped_column(String(50), default="active", nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+
+    # Connection type: postgres, mysql, bigquery, snowflake, etc.
+    type: Mapped[str] = mapped_column(String(50), nullable=False)
+
+    # Encrypted connection details (host, port, database, user, password, etc.)
+    # Stored as encrypted text (JSON string)
+    connection_info: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # Additional settings (SSL, timeout, etc.)
+    settings: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+
+    # Connection status
+    status: Mapped[str] = mapped_column(
+        String(20),
+        default="active",
+        nullable=False
+    )  # active, inactive, error
+
+    # Last test timestamp and result
     last_tested_at: Mapped[datetime | None] = mapped_column()
+    test_status: Mapped[str | None] = mapped_column(String(20))  # success, failed
+    test_message: Mapped[str | None] = mapped_column(Text)
+
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), onupdate=func.now(), nullable=False
