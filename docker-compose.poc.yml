@@ -1,0 +1,142 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: dataask-postgres
+    environment:
+      POSTGRES_USER: dataask
+      POSTGRES_PASSWORD: dataask_password
+      POSTGRES_DB: dataask
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dataask"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: dataask-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Qdrant Vector Database (for Wren AI)
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: dataask-qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Wren AI Service (Keep from original Wren)
+  wren-ai-service:
+    image: ghcr.io/canner/wren-ai-service:latest
+    container_name: dataask-wren-ai
+    ports:
+      - "5556:5556"
+    environment:
+      - QDRANT_HOST=qdrant
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-your-openai-key-here}
+      - GENERATION_MODEL=gpt-4-turbo-preview
+      - EMBEDDING_MODEL=text-embedding-3-large
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5556/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Ibis Server (Keep from original Wren)
+  ibis-server:
+    image: ghcr.io/canner/wren-engine-ibis:latest
+    container_name: dataask-ibis
+    ports:
+      - "8001:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # DataAsk Backend (New FastAPI service)
+  backend:
+    build:
+      context: ./dataask-backend
+      dockerfile: Dockerfile
+    container_name: dataask-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://dataask:dataask_password@postgres:5432/dataask
+      - REDIS_URL=redis://redis:6379/0
+      - WREN_AI_SERVICE_URL=http://wren-ai-service:5556
+      - IBIS_SERVER_URL=http://ibis-server:8000
+      - SECRET_KEY=${SECRET_KEY:-change-this-secret-key-in-production}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-change-this-encryption-key-min-32-chars}
+      - CORS_ORIGINS=["http://localhost:3000","http://localhost:3001"]
+      - DEBUG=True
+    volumes:
+      - ./dataask-backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      wren-ai-service:
+        condition: service_healthy
+      ibis-server:
+        condition: service_healthy
+    command: >
+      sh -c "
+        echo 'Waiting for database...' &&
+        poetry run alembic upgrade head &&
+        echo 'Starting server...' &&
+        poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      "
+
+  # DataAsk Frontend (Next.js 15 - to be created)
+  # Uncomment after frontend is created
+  # frontend:
+  #   build:
+  #     context: ./dataask-frontend
+  #     dockerfile: Dockerfile
+  #   container_name: dataask-frontend
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - NEXT_PUBLIC_API_URL=http://localhost:8000
+  #   volumes:
+  #     - ./dataask-frontend:/app
+  #     - /app/node_modules
+  #   depends_on:
+  #     - backend
+
+volumes:
+  postgres_data:
+  redis_data:
+  qdrant_data:
+
+networks:
+  default:
+    name: dataask-network
