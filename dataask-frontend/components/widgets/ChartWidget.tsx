@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button'
 import { BarChartComponent } from '@/components/charts/BarChartComponent'
 import { LineChartComponent } from '@/components/charts/LineChartComponent'
 import { PieChartComponent } from '@/components/charts/PieChartComponent'
+import { useDashboardFilters } from '@/contexts/DashboardFiltersContext'
+import { applyDashboardFilters } from '@/lib/utils/applyDashboardFilters'
 
 interface ChartWidgetProps {
   widget: Widget
@@ -15,6 +17,7 @@ interface ChartWidgetProps {
 }
 
 export function ChartWidget({ widget, workspaceId }: ChartWidgetProps) {
+  const { filters } = useDashboardFilters()
   const [data, setData] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
@@ -25,7 +28,7 @@ export function ChartWidget({ widget, workspaceId }: ChartWidgetProps) {
     if (hasQuery && workspaceId) {
       executeQuery()
     }
-  }, [widget.config.connectionId, widget.config.query, workspaceId])
+  }, [widget.config.connectionId, widget.config.query, workspaceId, filters])
 
   async function executeQuery() {
     if (!workspaceId || !widget.config.connectionId || !widget.config.query) return
@@ -34,10 +37,13 @@ export function ChartWidget({ widget, workspaceId }: ChartWidgetProps) {
     setError('')
 
     try {
+      // Apply dashboard filters to the query
+      const queryWithFilters = applyDashboardFilters(widget.config.query, filters)
+
       const result = await queriesApi.execute(
         workspaceId,
         widget.config.connectionId,
-        { query: widget.config.query }
+        { query: queryWithFilters }
       )
       setData(result.data)
     } catch (err: any) {

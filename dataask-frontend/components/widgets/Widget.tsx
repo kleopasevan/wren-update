@@ -28,7 +28,7 @@ export function Widget({ widget, workspaceId, onEdit, onDelete, onConfigureData 
       case 'text':
         return <TextWidget widget={widget} />
       case 'filter':
-        return <FilterWidget widget={widget} />
+        return <FilterWidget widget={widget} workspaceId={workspaceId || ''} />
       default:
         return (
           <div className="flex items-center justify-center h-full text-muted-foreground">

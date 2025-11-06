@@ -5,6 +5,8 @@ import { Table as TableIcon, Loader2, Database } from 'lucide-react'
 import { Widget } from '@/lib/api/widgets'
 import { queriesApi } from '@/lib/api/queries'
 import { Button } from '@/components/ui/button'
+import { useDashboardFilters } from '@/contexts/DashboardFiltersContext'
+import { applyDashboardFilters } from '@/lib/utils/applyDashboardFilters'
 
 interface TableWidgetProps {
   widget: Widget
@@ -12,6 +14,7 @@ interface TableWidgetProps {
 }
 
 export function TableWidget({ widget, workspaceId }: TableWidgetProps) {
+  const { filters } = useDashboardFilters()
   const [data, setData] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
@@ -22,7 +25,7 @@ export function TableWidget({ widget, workspaceId }: TableWidgetProps) {
     if (hasQuery && workspaceId) {
       executeQuery()
     }
-  }, [widget.config.connectionId, widget.config.query, workspaceId])
+  }, [widget.config.connectionId, widget.config.query, workspaceId, filters])
 
   async function executeQuery() {
     if (!workspaceId || !widget.config.connectionId || !widget.config.query) return
@@ -31,10 +34,13 @@ export function TableWidget({ widget, workspaceId }: TableWidgetProps) {
     setError('')
 
     try {
+      // Apply dashboard filters to the query
+      const queryWithFilters = applyDashboardFilters(widget.config.query, filters)
+
       const result = await queriesApi.execute(
         workspaceId,
         widget.config.connectionId,
-        { query: widget.config.query }
+        { query: queryWithFilters }
       )
       setData(result.data)
     } catch (err: any) {

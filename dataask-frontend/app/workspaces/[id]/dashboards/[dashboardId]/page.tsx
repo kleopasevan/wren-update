@@ -14,6 +14,7 @@ import { ConfigureWidgetDataDialog } from '@/components/widgets/ConfigureWidgetD
 import { EditDashboardDialog } from '@/components/dashboards/EditDashboardDialog'
 import { DeleteDashboardDialog } from '@/components/dashboards/DeleteDashboardDialog'
 import { RefreshControls, RefreshInterval } from '@/components/dashboards/RefreshControls'
+import { DashboardFiltersProvider } from '@/contexts/DashboardFiltersContext'
 import { QueryDefinition } from '@/lib/api/queries'
 import {
   ArrowLeft,
@@ -212,7 +213,8 @@ export default function DashboardDetailPage() {
   }
 
   return (
-    <div className="container mx-auto p-6">
+    <DashboardFiltersProvider>
+      <div className="container mx-auto p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-4">
@@ -348,6 +350,7 @@ export default function DashboardDetailPage() {
         workspaceId={workspaceId}
         onSave={handleSaveWidgetData}
       />
-    </div>
+      </div>
+    </DashboardFiltersProvider>
   )
 }
