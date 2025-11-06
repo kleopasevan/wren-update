@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { useAuth } from '@/lib/contexts/auth-context'
 import { workspacesApi, type Workspace } from '@/lib/api/workspaces'
 import { connectionsApi, type Connection } from '@/lib/api/connections'
+import { dashboardsApi, type Dashboard } from '@/lib/api/dashboards'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -17,7 +18,12 @@ import {
 import { CreateConnectionDialog } from '@/components/connections/CreateConnectionDialog'
 import { EditConnectionDialog } from '@/components/connections/EditConnectionDialog'
 import { DeleteConnectionDialog } from '@/components/connections/DeleteConnectionDialog'
-import { ArrowLeft, Plus, Database, MoreVertical, Pencil, Trash2, TestTube } from 'lucide-react'
+import { CreateDashboardDialog } from '@/components/dashboards/CreateDashboardDialog'
+import { EditDashboardDialog } from '@/components/dashboards/EditDashboardDialog'
+import { DeleteDashboardDialog } from '@/components/dashboards/DeleteDashboardDialog'
+import { ArrowLeft, Plus, Database, MoreVertical, Pencil, Trash2, TestTube, LayoutDashboard } from 'lucide-react'
+
+type Tab = 'connections' | 'dashboards' | 'settings'
 
 export default function WorkspaceDetailPage() {
   const { user, isLoading: authLoading } = useAuth()
@@ -26,18 +32,24 @@ export default function WorkspaceDetailPage() {
   const workspaceId = params.id as string
 
   const [workspace, setWorkspace] = useState<Workspace | null>(null)
+  const [activeTab, setActiveTab] = useState<Tab>('connections')
   const [connections, setConnections] = useState<Connection[]>([])
+  const [dashboards, setDashboards] = useState<Dashboard[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
 
-  // Dialog states
-  const [createDialogOpen, setCreateDialogOpen] = useState(false)
-  const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  // Connection dialog states
+  const [createConnectionDialogOpen, setCreateConnectionDialogOpen] = useState(false)
+  const [editConnectionDialogOpen, setEditConnectionDialogOpen] = useState(false)
+  const [deleteConnectionDialogOpen, setDeleteConnectionDialogOpen] = useState(false)
   const [selectedConnection, setSelectedConnection] = useState<Connection | null>(null)
-
-  // Test connection loading state
   const [testingConnectionId, setTestingConnectionId] = useState<string | null>(null)
+
+  // Dashboard dialog states
+  const [createDashboardDialogOpen, setCreateDashboardDialogOpen] = useState(false)
+  const [editDashboardDialogOpen, setEditDashboardDialogOpen] = useState(false)
+  const [deleteDashboardDialogOpen, setDeleteDashboardDialogOpen] = useState(false)
+  const [selectedDashboard, setSelectedDashboard] = useState<Dashboard | null>(null)
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -46,7 +58,7 @@ export default function WorkspaceDetailPage() {
     }
   }, [user, authLoading, router])
 
-  // Fetch workspace and connections
+  // Fetch workspace and data
   useEffect(() => {
     if (user && workspaceId) {
       loadWorkspaceData()
@@ -62,8 +74,8 @@ export default function WorkspaceDetailPage() {
       const workspaceData = await workspacesApi.get(workspaceId)
       setWorkspace(workspaceData)
 
-      // Load connections
-      await loadConnections()
+      // Load connections and dashboards in parallel
+      await Promise.all([loadConnections(), loadDashboards()])
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to load workspace')
     } finally {
@@ -76,16 +88,22 @@ export default function WorkspaceDetailPage() {
     setConnections(connectionsData)
   }
 
-  function handleEditClick(connection: Connection, e: React.MouseEvent) {
-    e.stopPropagation()
-    setSelectedConnection(connection)
-    setEditDialogOpen(true)
+  async function loadDashboards() {
+    const dashboardsData = await dashboardsApi.list(workspaceId)
+    setDashboards(dashboardsData)
   }
 
-  function handleDeleteClick(connection: Connection, e: React.MouseEvent) {
+  // Connection handlers
+  function handleEditConnection(connection: Connection, e: React.MouseEvent) {
     e.stopPropagation()
     setSelectedConnection(connection)
-    setDeleteDialogOpen(true)
+    setEditConnectionDialogOpen(true)
+  }
+
+  function handleDeleteConnection(connection: Connection, e: React.MouseEvent) {
+    e.stopPropagation()
+    setSelectedConnection(connection)
+    setDeleteConnectionDialogOpen(true)
   }
 
   async function handleTestConnection(connection: Connection, e: React.MouseEvent) {
@@ -95,20 +113,35 @@ export default function WorkspaceDetailPage() {
     try {
       const result = await connectionsApi.test(workspaceId, connection.id)
 
-      // Show result in alert for now (could use toast in future)
       if (result.status === 'success') {
         alert(`Connection test successful!\n\n${result.message}`)
       } else {
         alert(`Connection test failed!\n\n${result.message}`)
       }
 
-      // Reload connections to get updated test status
       await loadConnections()
     } catch (err: any) {
       alert(`Connection test failed!\n\n${err.response?.data?.detail || 'Unknown error'}`)
     } finally {
       setTestingConnectionId(null)
     }
+  }
+
+  // Dashboard handlers
+  function handleEditDashboard(dashboard: Dashboard, e: React.MouseEvent) {
+    e.stopPropagation()
+    setSelectedDashboard(dashboard)
+    setEditDashboardDialogOpen(true)
+  }
+
+  function handleDeleteDashboard(dashboard: Dashboard, e: React.MouseEvent) {
+    e.stopPropagation()
+    setSelectedDashboard(dashboard)
+    setDeleteDashboardDialogOpen(true)
+  }
+
+  function handleDashboardClick(dashboardId: string) {
+    router.push(`/workspaces/${workspaceId}/dashboards/${dashboardId}`)
   }
 
   // Show loading while checking authentication
@@ -164,165 +197,326 @@ export default function WorkspaceDetailPage() {
           </div>
         </div>
 
-        {/* Tabs / Sections */}
+        {/* Tabs */}
         <div className="border-b border-border mb-6">
           <div className="flex space-x-6">
-            <button className="pb-3 border-b-2 border-primary text-sm font-medium">
+            <button
+              onClick={() => setActiveTab('connections')}
+              className={`pb-3 border-b-2 text-sm font-medium transition-colors ${
+                activeTab === 'connections'
+                  ? 'border-primary text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
               Connections
             </button>
-            <button className="pb-3 border-b-2 border-transparent text-sm font-medium text-muted-foreground hover:text-foreground">
+            <button
+              onClick={() => setActiveTab('dashboards')}
+              className={`pb-3 border-b-2 text-sm font-medium transition-colors ${
+                activeTab === 'dashboards'
+                  ? 'border-primary text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
               Dashboards
             </button>
-            <button className="pb-3 border-b-2 border-transparent text-sm font-medium text-muted-foreground hover:text-foreground">
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`pb-3 border-b-2 text-sm font-medium transition-colors ${
+                activeTab === 'settings'
+                  ? 'border-primary text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
               Settings
             </button>
           </div>
         </div>
 
-        {/* Connections Section */}
-        <div>
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-xl font-semibold">Data Connections</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Connect to your data sources
-              </p>
-            </div>
-            <Button onClick={() => setCreateDialogOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Connection
-            </Button>
-          </div>
-
-          {/* Loading State */}
-          {isLoading && (
-            <div className="flex items-center justify-center py-12">
-              <div className="text-muted-foreground">Loading connections...</div>
-            </div>
-          )}
-
-          {/* Empty State */}
-          {!isLoading && connections.length === 0 && (
-            <Card className="border-dashed">
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <div className="rounded-full bg-muted p-3 mb-4">
-                  <Database className="h-6 w-6 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">No connections yet</h3>
-                <p className="text-sm text-muted-foreground text-center mb-4 max-w-sm">
-                  Connect to your databases like PostgreSQL, MySQL, BigQuery, Snowflake, and more
-                  to start analyzing your data.
+        {/* Connections Tab */}
+        {activeTab === 'connections' && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-semibold">Data Connections</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Connect to your data sources
                 </p>
-                <Button onClick={() => setCreateDialogOpen(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Your First Connection
-                </Button>
+              </div>
+              <Button onClick={() => setCreateConnectionDialogOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Connection
+              </Button>
+            </div>
+
+            {isLoading && (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-muted-foreground">Loading connections...</div>
+              </div>
+            )}
+
+            {!isLoading && connections.length === 0 && (
+              <Card className="border-dashed">
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <div className="rounded-full bg-muted p-3 mb-4">
+                    <Database className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">No connections yet</h3>
+                  <p className="text-sm text-muted-foreground text-center mb-4 max-w-sm">
+                    Connect to your databases like PostgreSQL, MySQL, BigQuery, Snowflake, and more
+                    to start analyzing your data.
+                  </p>
+                  <Button onClick={() => setCreateConnectionDialogOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Your First Connection
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {!isLoading && connections.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {connections.map((connection) => (
+                  <Card key={connection.id} className="hover:bg-muted/50 transition-colors relative group">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-base">{connection.name}</CardTitle>
+                          {connection.description && (
+                            <CardDescription className="mt-1">
+                              {connection.description}
+                            </CardDescription>
+                          )}
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                              <span className="sr-only">Open menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={(e) => handleTestConnection(connection, e as any)}
+                              disabled={testingConnectionId === connection.id}
+                            >
+                              <TestTube className="mr-2 h-4 w-4" />
+                              {testingConnectionId === connection.id ? 'Testing...' : 'Test Connection'}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => handleEditConnection(connection, e as any)}>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={(e) => handleDeleteConnection(connection, e as any)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <div className="font-mono bg-muted px-2 py-1 rounded">
+                            {connection.type}
+                          </div>
+                          <div
+                            className={`px-2 py-1 rounded ${
+                              connection.status === 'active'
+                                ? 'bg-green-500/10 text-green-500'
+                                : 'bg-yellow-500/10 text-yellow-500'
+                            }`}
+                          >
+                            {connection.status}
+                          </div>
+                        </div>
+                      </div>
+                      {connection.last_tested_at && (
+                        <div className="mt-2 text-xs text-muted-foreground">
+                          Last tested: {new Date(connection.last_tested_at).toLocaleDateString()}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Dashboards Tab */}
+        {activeTab === 'dashboards' && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-semibold">Dashboards</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Create and manage your analytics dashboards
+                </p>
+              </div>
+              <Button onClick={() => setCreateDashboardDialogOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Dashboard
+              </Button>
+            </div>
+
+            {isLoading && (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-muted-foreground">Loading dashboards...</div>
+              </div>
+            )}
+
+            {!isLoading && dashboards.length === 0 && (
+              <Card className="border-dashed">
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <div className="rounded-full bg-muted p-3 mb-4">
+                    <LayoutDashboard className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">No dashboards yet</h3>
+                  <p className="text-sm text-muted-foreground text-center mb-4 max-w-sm">
+                    Create your first dashboard to visualize your data with charts, metrics, and tables.
+                  </p>
+                  <Button onClick={() => setCreateDashboardDialogOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create Your First Dashboard
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {!isLoading && dashboards.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {dashboards.map((dashboard) => (
+                  <Card
+                    key={dashboard.id}
+                    className="hover:bg-muted/50 transition-colors cursor-pointer relative group"
+                    onClick={() => handleDashboardClick(dashboard.id)}
+                  >
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-base">{dashboard.name}</CardTitle>
+                          {dashboard.description && (
+                            <CardDescription className="mt-1">
+                              {dashboard.description}
+                            </CardDescription>
+                          )}
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                              <span className="sr-only">Open menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={(e) => handleEditDashboard(dashboard, e as any)}>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={(e) => handleDeleteDashboard(dashboard, e as any)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-xs text-muted-foreground">
+                        Created {new Date(dashboard.created_at).toLocaleDateString()}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Settings Tab */}
+        {activeTab === 'settings' && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-semibold">Settings</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Manage workspace settings
+                </p>
+              </div>
+            </div>
+            <Card>
+              <CardContent className="flex items-center justify-center py-12">
+                <p className="text-muted-foreground">Settings coming soon</p>
               </CardContent>
             </Card>
-          )}
-
-          {/* Connections Grid */}
-          {!isLoading && connections.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {connections.map((connection) => (
-                <Card key={connection.id} className="hover:bg-muted/50 transition-colors relative group">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="text-base">{connection.name}</CardTitle>
-                        {connection.description && (
-                          <CardDescription className="mt-1">
-                            {connection.description}
-                          </CardDescription>
-                        )}
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                            <span className="sr-only">Open menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={(e) => handleTestConnection(connection, e as any)}
-                            disabled={testingConnectionId === connection.id}
-                          >
-                            <TestTube className="mr-2 h-4 w-4" />
-                            {testingConnectionId === connection.id ? 'Testing...' : 'Test Connection'}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={(e) => handleEditClick(connection, e as any)}>
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={(e) => handleDeleteClick(connection, e as any)}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <div className="font-mono bg-muted px-2 py-1 rounded">
-                          {connection.type}
-                        </div>
-                        <div
-                          className={`px-2 py-1 rounded ${
-                            connection.status === 'active'
-                              ? 'bg-green-500/10 text-green-500'
-                              : 'bg-yellow-500/10 text-yellow-500'
-                          }`}
-                        >
-                          {connection.status}
-                        </div>
-                      </div>
-                    </div>
-                    {connection.last_tested_at && (
-                      <div className="mt-2 text-xs text-muted-foreground">
-                        Last tested: {new Date(connection.last_tested_at).toLocaleDateString()}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* Dialogs */}
+      {/* Connection Dialogs */}
       <CreateConnectionDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
+        open={createConnectionDialogOpen}
+        onOpenChange={setCreateConnectionDialogOpen}
         workspaceId={workspaceId}
         onSuccess={loadConnections}
       />
 
       <EditConnectionDialog
-        open={editDialogOpen}
-        onOpenChange={setEditDialogOpen}
+        open={editConnectionDialogOpen}
+        onOpenChange={setEditConnectionDialogOpen}
         workspaceId={workspaceId}
         connection={selectedConnection}
         onSuccess={loadConnections}
       />
 
       <DeleteConnectionDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
+        open={deleteConnectionDialogOpen}
+        onOpenChange={setDeleteConnectionDialogOpen}
         workspaceId={workspaceId}
         connection={selectedConnection}
         onSuccess={loadConnections}
+      />
+
+      {/* Dashboard Dialogs */}
+      <CreateDashboardDialog
+        open={createDashboardDialogOpen}
+        onOpenChange={setCreateDashboardDialogOpen}
+        workspaceId={workspaceId}
+        onSuccess={loadDashboards}
+      />
+
+      <EditDashboardDialog
+        open={editDashboardDialogOpen}
+        onOpenChange={setEditDashboardDialogOpen}
+        workspaceId={workspaceId}
+        dashboard={selectedDashboard}
+        onSuccess={loadDashboards}
+      />
+
+      <DeleteDashboardDialog
+        open={deleteDashboardDialogOpen}
+        onOpenChange={setDeleteDashboardDialogOpen}
+        workspaceId={workspaceId}
+        dashboard={selectedDashboard}
+        onSuccess={loadDashboards}
       />
     </div>
   )
