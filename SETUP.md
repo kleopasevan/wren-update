@@ -13,7 +13,7 @@ Complete setup guide for running DataAsk locally with all features including Das
 
 ```
 wren-update/
-├── dataask-backend/          # FastAPI backend
+├── dataask-backend/          # FastAPI backend (Python + Poetry)
 │   ├── app/
 │   │   ├── api/routers/      # API endpoints
 │   │   ├── models/           # SQLAlchemy models
@@ -21,7 +21,7 @@ wren-update/
 │   │   ├── services/         # Business logic (scheduler, email, etc.)
 │   │   └── utils/            # Utilities (parameters, etc.)
 │   ├── migrations/           # Alembic migrations
-│   └── requirements.txt      # Python dependencies
+│   └── pyproject.toml        # Poetry dependencies & config
 ├── dataask-frontend/         # Next.js frontend
 │   ├── app/                  # Next.js App Router pages
 │   ├── components/           # React components
@@ -32,18 +32,33 @@ wren-update/
 
 ## Backend Setup
 
-### 1. Create Virtual Environment
+### 1. Install Poetry
+
+The backend uses Poetry for dependency management. Install Poetry first:
 
 ```bash
-cd dataask-backend
-python3.12 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Install Poetry (if not already installed)
+curl -sSL https://install.python-poetry.org | python3 -
+
+# Or via pip
+pip install poetry
 ```
 
 ### 2. Install Dependencies
 
 ```bash
-pip install --upgrade pip
+cd dataask-backend
+
+# Install dependencies (Poetry creates virtual environment automatically)
+poetry install
+
+# Activate the virtual environment
+poetry shell
+```
+
+**Alternative - Export to requirements.txt (if you prefer pip):**
+```bash
+poetry export -f requirements.txt --output requirements.txt --without-hashes
 pip install -r requirements.txt
 ```
 
@@ -132,7 +147,10 @@ alembic upgrade head
 
 ```bash
 cd dataask-backend
-source venv/bin/activate
+poetry shell  # Activate virtual environment
+poetry run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# Or if already in poetry shell:
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
@@ -273,9 +291,12 @@ WHERE country = '{{country}}'
 4. Check email inbox for CSV and PDF attachments
 
 **Manual Testing (via Python):**
-```python
+```bash
 # In dataask-backend/
+poetry shell
 python
+
+# Then in Python interpreter:
 >>> from app.services.scheduled_query_executor import execute_and_email_query
 >>> from app.database import get_db
 >>> import asyncio
@@ -489,13 +510,22 @@ WHERE id = 'query-id-here';
 
 ### Backend
 
-1. **Use Production ASGI Server:**
+1. **Install Production Dependencies:**
 ```bash
-pip install gunicorn
-gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+cd dataask-backend
+poetry install --only main  # Skip dev dependencies
 ```
 
-2. **Set Production Environment Variables:**
+2. **Use Production ASGI Server:**
+```bash
+# Install gunicorn via Poetry
+poetry add gunicorn --group prod
+
+# Run with gunicorn
+poetry run gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+```
+
+3. **Set Production Environment Variables:**
 ```bash
 export DATABASE_URL=postgresql+asyncpg://user:pass@prod-db:5432/dataask
 export SECRET_KEY=$(openssl rand -hex 32)
@@ -503,7 +533,7 @@ export LOG_LEVEL=WARNING
 export CORS_ORIGINS='["https://yourdomain.com"]'
 ```
 
-3. **Use Process Manager (systemd example):**
+4. **Use Process Manager (systemd example):**
 ```ini
 # /etc/systemd/system/dataask-backend.service
 [Unit]
@@ -514,13 +544,23 @@ After=network.target
 Type=simple
 User=www-data
 WorkingDirectory=/var/www/dataask-backend
-Environment="PATH=/var/www/dataask-backend/venv/bin"
 EnvironmentFile=/var/www/dataask-backend/.env
-ExecStart=/var/www/dataask-backend/venv/bin/gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+ExecStart=/usr/local/bin/poetry run gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
 Restart=always
 
 [Install]
 WantedBy=multi-user.target
+```
+
+**Alternative using Poetry's virtual environment path:**
+```bash
+# Find Poetry's venv path
+cd /var/www/dataask-backend
+poetry env info --path
+# Example output: /home/www-data/.cache/pypoetry/virtualenvs/dataask-backend-xyz-py3.12
+
+# Then use that path in systemd:
+ExecStart=/home/www-data/.cache/pypoetry/virtualenvs/dataask-backend-xyz-py3.12/bin/gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
 ```
 
 ### Frontend
@@ -592,9 +632,9 @@ server {
 **Backend:**
 ```bash
 cd dataask-backend
-pytest
-pytest -v  # Verbose
-pytest tests/test_specific.py  # Specific test
+poetry run pytest
+poetry run pytest -v  # Verbose
+poetry run pytest tests/test_specific.py  # Specific test
 ```
 
 **Frontend:**
@@ -608,14 +648,16 @@ npm run test:watch
 
 **Backend:**
 ```bash
-# Format with black
-black app/
+cd dataask-backend
+
+# Format with ruff
+poetry run ruff format app/
 
 # Lint with ruff
-ruff check app/
+poetry run ruff check app/
 
 # Type check with mypy
-mypy app/
+poetry run mypy app/
 ```
 
 **Frontend:**
