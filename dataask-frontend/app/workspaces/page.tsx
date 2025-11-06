@@ -6,6 +6,17 @@ import { useAuth } from '@/lib/contexts/auth-context'
 import { workspacesApi, type Workspace } from '@/lib/api/workspaces'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { CreateWorkspaceDialog } from '@/components/workspaces/CreateWorkspaceDialog'
+import { EditWorkspaceDialog } from '@/components/workspaces/EditWorkspaceDialog'
+import { DeleteWorkspaceDialog } from '@/components/workspaces/DeleteWorkspaceDialog'
+import { MoreVertical, Pencil, Trash2 } from 'lucide-react'
 
 export default function WorkspacesPage() {
   const { user, isLoading: authLoading, logout } = useAuth()
@@ -13,6 +24,12 @@ export default function WorkspacesPage() {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
+
+  // Dialog states
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [selectedWorkspace, setSelectedWorkspace] = useState<Workspace | null>(null)
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -41,8 +58,20 @@ export default function WorkspacesPage() {
     }
   }
 
-  async function handleWorkspaceClick(workspaceId: string) {
+  function handleWorkspaceClick(workspaceId: string) {
     router.push(`/workspaces/${workspaceId}`)
+  }
+
+  function handleEditClick(workspace: Workspace, e: React.MouseEvent) {
+    e.stopPropagation()
+    setSelectedWorkspace(workspace)
+    setEditDialogOpen(true)
+  }
+
+  function handleDeleteClick(workspace: Workspace, e: React.MouseEvent) {
+    e.stopPropagation()
+    setSelectedWorkspace(workspace)
+    setDeleteDialogOpen(true)
   }
 
   // Show nothing while checking authentication
@@ -72,10 +101,7 @@ export default function WorkspacesPage() {
             <Button variant="outline" onClick={logout}>
               Logout
             </Button>
-            <Button onClick={() => {
-              // Create workspace dialog - will be implemented in Phase 1.2
-              alert('Create workspace functionality will be added in Phase 1.2')
-            }}>
+            <Button onClick={() => setCreateDialogOpen(true)}>
               Create Workspace
             </Button>
           </div>
@@ -119,9 +145,7 @@ export default function WorkspacesPage() {
                 Get started by creating your first workspace. Workspaces help you organize
                 your data connections, dashboards, and analytics projects.
               </p>
-              <Button onClick={() => {
-                alert('Create workspace functionality will be added in Phase 1.2')
-              }}>
+              <Button onClick={() => setCreateDialogOpen(true)}>
                 Create Your First Workspace
               </Button>
             </CardContent>
@@ -134,23 +158,73 @@ export default function WorkspacesPage() {
             {workspaces.map((workspace) => (
               <Card
                 key={workspace.id}
-                className="cursor-pointer transition-colors hover:bg-muted/50"
-                onClick={() => handleWorkspaceClick(workspace.id)}
+                className="cursor-pointer transition-colors hover:bg-muted/50 relative group"
               >
-                <CardHeader>
-                  <CardTitle>{workspace.name}</CardTitle>
-                  {workspace.description && (
-                    <CardDescription>{workspace.description}</CardDescription>
-                  )}
-                </CardHeader>
-                <CardFooter className="text-xs text-muted-foreground">
-                  Created {new Date(workspace.created_at).toLocaleDateString()}
-                </CardFooter>
+                <div onClick={() => handleWorkspaceClick(workspace.id)}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <CardTitle className="flex-1">{workspace.name}</CardTitle>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                            <span className="sr-only">Open menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={(e) => handleEditClick(workspace, e as any)}>
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={(e) => handleDeleteClick(workspace, e as any)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    {workspace.description && (
+                      <CardDescription>{workspace.description}</CardDescription>
+                    )}
+                  </CardHeader>
+                  <CardFooter className="text-xs text-muted-foreground">
+                    Created {new Date(workspace.created_at).toLocaleDateString()}
+                  </CardFooter>
+                </div>
               </Card>
             ))}
           </div>
         )}
       </div>
+
+      {/* Dialogs */}
+      <CreateWorkspaceDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onSuccess={loadWorkspaces}
+      />
+
+      <EditWorkspaceDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        workspace={selectedWorkspace}
+        onSuccess={loadWorkspaces}
+      />
+
+      <DeleteWorkspaceDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        workspace={selectedWorkspace}
+        onSuccess={loadWorkspaces}
+      />
     </div>
   )
 }
