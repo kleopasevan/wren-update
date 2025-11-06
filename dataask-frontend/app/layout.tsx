@@ -1,6 +1,9 @@
 import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/lib/contexts/auth-context'
+
+const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'DataAsk - Conversational Business Intelligence',
@@ -13,8 +16,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
-      <body className="font-sans antialiased">
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${inter.className} font-sans antialiased`}>
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

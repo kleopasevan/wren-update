@@ -10,6 +10,11 @@ export const apiClient = axios.create({
   },
 })
 
+// Debug: Log the API base URL in development
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+  console.log('[API Client] Base URL:', apiClient.defaults.baseURL)
+}
+
 // Request interceptor to add JWT token
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {

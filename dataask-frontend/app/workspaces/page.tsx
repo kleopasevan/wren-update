@@ -16,6 +16,7 @@ import {
 import { CreateWorkspaceDialog } from '@/components/workspaces/CreateWorkspaceDialog'
 import { EditWorkspaceDialog } from '@/components/workspaces/EditWorkspaceDialog'
 import { DeleteWorkspaceDialog } from '@/components/workspaces/DeleteWorkspaceDialog'
+import { AppLayout } from '@/components/layout/app-layout'
 import { MoreVertical, Pencil, Trash2 } from 'lucide-react'
 
 export default function WorkspacesPage() {
@@ -84,28 +85,23 @@ export default function WorkspacesPage() {
   }
 
   return (
-    <div className="min-h-screen p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Workspaces</h1>
-            <p className="text-muted-foreground mt-2">
-              Manage your data workspaces and analytics projects
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="text-sm text-muted-foreground">
-              {user.email}
+    <AppLayout>
+      <div className="flex-1 overflow-auto p-8 bg-background">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight text-black">Workspaces</h1>
+              <p className="text-muted-foreground mt-2">
+                Manage your data workspaces and analytics projects
+              </p>
             </div>
-            <Button variant="outline" onClick={logout}>
-              Logout
-            </Button>
-            <Button onClick={() => setCreateDialogOpen(true)}>
-              Create Workspace
-            </Button>
+            <div className="flex items-center gap-4">
+              <Button onClick={() => setCreateDialogOpen(true)} className="bg-[#ff5001] hover:bg-[#ff5001]/90 text-white">
+                Create Workspace
+              </Button>
+            </div>
           </div>
-        </div>
 
         {/* Error Message */}
         {error && (
@@ -203,28 +199,29 @@ export default function WorkspacesPage() {
             ))}
           </div>
         )}
+        </div>
+
+        {/* Dialogs */}
+        <CreateWorkspaceDialog
+          open={createDialogOpen}
+          onOpenChange={setCreateDialogOpen}
+          onSuccess={loadWorkspaces}
+        />
+
+        <EditWorkspaceDialog
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          workspace={selectedWorkspace}
+          onSuccess={loadWorkspaces}
+        />
+
+        <DeleteWorkspaceDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          workspace={selectedWorkspace}
+          onSuccess={loadWorkspaces}
+        />
       </div>
-
-      {/* Dialogs */}
-      <CreateWorkspaceDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        onSuccess={loadWorkspaces}
-      />
-
-      <EditWorkspaceDialog
-        open={editDialogOpen}
-        onOpenChange={setEditDialogOpen}
-        workspace={selectedWorkspace}
-        onSuccess={loadWorkspaces}
-      />
-
-      <DeleteWorkspaceDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        workspace={selectedWorkspace}
-        onSuccess={loadWorkspaces}
-      />
-    </div>
+    </AppLayout>
   )
 }

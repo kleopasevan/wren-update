@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/contexts/auth-context'
 import { workspacesApi, type Workspace } from '@/lib/api/workspaces'
 import { connectionsApi, type Connection } from '@/lib/api/connections'
@@ -22,6 +22,7 @@ import { SchemaExplorerDialog } from '@/components/connections/SchemaExplorerDia
 import { CreateDashboardDialog } from '@/components/dashboards/CreateDashboardDialog'
 import { EditDashboardDialog } from '@/components/dashboards/EditDashboardDialog'
 import { DeleteDashboardDialog } from '@/components/dashboards/DeleteDashboardDialog'
+import { AppLayout } from '@/components/layout/app-layout'
 import { ArrowLeft, Plus, Database, MoreVertical, Pencil, Trash2, TestTube, LayoutDashboard, ListTree, FolderOpen, History, Clock } from 'lucide-react'
 
 type Tab = 'connections' | 'dashboards' | 'queries' | 'history' | 'schedules' | 'settings'
@@ -30,10 +31,25 @@ export default function WorkspaceDetailPage() {
   const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
   const params = useParams()
+  const searchParams = useSearchParams()
   const workspaceId = params.id as string
 
   const [workspace, setWorkspace] = useState<Workspace | null>(null)
-  const [activeTab, setActiveTab] = useState<Tab>('connections')
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    const tabParam = searchParams?.get('tab')
+    if (tabParam && ['connections', 'dashboards', 'queries', 'history', 'schedules', 'settings'].includes(tabParam)) {
+      return tabParam as Tab
+    }
+    return 'connections'
+  })
+
+  // Update active tab when URL param changes
+  useEffect(() => {
+    const tabParam = searchParams?.get('tab')
+    if (tabParam && ['connections', 'dashboards', 'queries', 'history', 'schedules', 'settings'].includes(tabParam)) {
+      setActiveTab(tabParam as Tab)
+    }
+  }, [searchParams])
   const [connections, setConnections] = useState<Connection[]>([])
   const [dashboards, setDashboards] = useState<Dashboard[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -164,112 +180,133 @@ export default function WorkspaceDetailPage() {
   // Show error if workspace failed to load
   if (error) {
     return (
-      <div className="min-h-screen p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-md">
-            {error}
+      <AppLayout>
+        <div className="flex-1 overflow-auto p-8">
+          <div className="max-w-7xl mx-auto">
+            <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-md">
+              {error}
+            </div>
+            <Button onClick={() => router.push('/workspaces')} className="mt-4">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Workspaces
+            </Button>
           </div>
-          <Button onClick={() => router.push('/workspaces')} className="mt-4">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Workspaces
-          </Button>
         </div>
-      </div>
+      </AppLayout>
     )
   }
 
   return (
-    <div className="min-h-screen p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push('/workspaces')}
-            className="mb-4"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Workspaces
-          </Button>
+    <AppLayout>
+      <div className="flex-1 overflow-auto p-8 bg-background">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="mb-8">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push('/workspaces')}
+              className="mb-4 text-black"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Workspaces
+            </Button>
 
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">
-                {workspace?.name || 'Loading...'}
-              </h1>
-              {workspace?.description && (
-                <p className="text-muted-foreground mt-2">{workspace.description}</p>
-              )}
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight text-black">
+                  {workspace?.name || 'Loading...'}
+                </h1>
+                {workspace?.description && (
+                  <p className="text-muted-foreground mt-2">{workspace.description}</p>
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Tabs */}
-        <div className="border-b border-border mb-6">
-          <div className="flex space-x-6">
-            <button
-              onClick={() => setActiveTab('connections')}
-              className={`pb-3 border-b-2 text-sm font-medium transition-colors ${
-                activeTab === 'connections'
-                  ? 'border-primary text-foreground'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Connections
-            </button>
-            <button
-              onClick={() => setActiveTab('dashboards')}
-              className={`pb-3 border-b-2 text-sm font-medium transition-colors ${
-                activeTab === 'dashboards'
-                  ? 'border-primary text-foreground'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Dashboards
-            </button>
-            <button
-              onClick={() => setActiveTab('queries')}
-              className={`pb-3 border-b-2 text-sm font-medium transition-colors ${
-                activeTab === 'queries'
-                  ? 'border-primary text-foreground'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Saved Queries
-            </button>
-            <button
-              onClick={() => setActiveTab('history')}
-              className={`pb-3 border-b-2 text-sm font-medium transition-colors ${
-                activeTab === 'history'
-                  ? 'border-primary text-foreground'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Query History
-            </button>
-            <button
-              onClick={() => setActiveTab('schedules')}
-              className={`pb-3 border-b-2 text-sm font-medium transition-colors ${
-                activeTab === 'schedules'
-                  ? 'border-primary text-foreground'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Scheduled Queries
-            </button>
-            <button
-              onClick={() => setActiveTab('settings')}
-              className={`pb-3 border-b-2 text-sm font-medium transition-colors ${
-                activeTab === 'settings'
-                  ? 'border-primary text-foreground'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Settings
-            </button>
+          {/* Tabs */}
+          <div className="border-b border-border mb-6">
+            <div className="flex space-x-6">
+              <button
+                onClick={() => {
+                  setActiveTab('connections')
+                  router.push(`/workspaces/${workspaceId}?tab=connections`)
+                }}
+                className={`pb-3 border-b-2 text-sm font-medium transition-colors ${
+                  activeTab === 'connections'
+                    ? 'border-[#ff5001] text-black'
+                    : 'border-transparent text-muted-foreground hover:text-black'
+                }`}
+              >
+                Connections
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab('dashboards')
+                  router.push(`/workspaces/${workspaceId}?tab=dashboards`)
+                }}
+                className={`pb-3 border-b-2 text-sm font-medium transition-colors ${
+                  activeTab === 'dashboards'
+                    ? 'border-[#ff5001] text-black'
+                    : 'border-transparent text-muted-foreground hover:text-black'
+                }`}
+              >
+                Dashboards
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab('queries')
+                  router.push(`/workspaces/${workspaceId}?tab=queries`)
+                }}
+                className={`pb-3 border-b-2 text-sm font-medium transition-colors ${
+                  activeTab === 'queries'
+                    ? 'border-[#ff5001] text-black'
+                    : 'border-transparent text-muted-foreground hover:text-black'
+                }`}
+              >
+                Saved Queries
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab('history')
+                  router.push(`/workspaces/${workspaceId}?tab=history`)
+                }}
+                className={`pb-3 border-b-2 text-sm font-medium transition-colors ${
+                  activeTab === 'history'
+                    ? 'border-[#ff5001] text-black'
+                    : 'border-transparent text-muted-foreground hover:text-black'
+                }`}
+              >
+                Query History
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab('schedules')
+                  router.push(`/workspaces/${workspaceId}?tab=schedules`)
+                }}
+                className={`pb-3 border-b-2 text-sm font-medium transition-colors ${
+                  activeTab === 'schedules'
+                    ? 'border-[#ff5001] text-black'
+                    : 'border-transparent text-muted-foreground hover:text-black'
+                }`}
+              >
+                Scheduled Queries
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab('settings')
+                  router.push(`/workspaces/${workspaceId}?tab=settings`)
+                }}
+                className={`pb-3 border-b-2 text-sm font-medium transition-colors ${
+                  activeTab === 'settings'
+                    ? 'border-[#ff5001] text-black'
+                    : 'border-transparent text-muted-foreground hover:text-black'
+                }`}
+              >
+                Settings
+              </button>
+            </div>
           </div>
-        </div>
 
         {/* Connections Tab */}
         {activeTab === 'connections' && (
@@ -281,7 +318,7 @@ export default function WorkspaceDetailPage() {
                   Connect to your data sources
                 </p>
               </div>
-              <Button onClick={() => setCreateConnectionDialogOpen(true)}>
+              <Button onClick={() => setCreateConnectionDialogOpen(true)} className="bg-[#ff5001] hover:bg-[#ff5001]/90 text-white">
                 <Plus className="mr-2 h-4 w-4" />
                 Add Connection
               </Button>
@@ -304,7 +341,7 @@ export default function WorkspaceDetailPage() {
                     Connect to your databases like PostgreSQL, MySQL, BigQuery, Snowflake, and more
                     to start analyzing your data.
                   </p>
-                  <Button onClick={() => setCreateConnectionDialogOpen(true)}>
+                  <Button onClick={() => setCreateConnectionDialogOpen(true)} className="bg-[#ff5001] hover:bg-[#ff5001]/90 text-white">
                     <Plus className="mr-2 h-4 w-4" />
                     Add Your First Connection
                   </Button>
@@ -405,7 +442,7 @@ export default function WorkspaceDetailPage() {
                   Create and manage your analytics dashboards
                 </p>
               </div>
-              <Button onClick={() => setCreateDashboardDialogOpen(true)}>
+              <Button onClick={() => setCreateDashboardDialogOpen(true)} className="bg-[#ff5001] hover:bg-[#ff5001]/90 text-white">
                 <Plus className="mr-2 h-4 w-4" />
                 Create Dashboard
               </Button>
@@ -427,7 +464,7 @@ export default function WorkspaceDetailPage() {
                   <p className="text-sm text-muted-foreground text-center mb-4 max-w-sm">
                     Create your first dashboard to visualize your data with charts, metrics, and tables.
                   </p>
-                  <Button onClick={() => setCreateDashboardDialogOpen(true)}>
+                  <Button onClick={() => setCreateDashboardDialogOpen(true)} className="bg-[#ff5001] hover:bg-[#ff5001]/90 text-white">
                     <Plus className="mr-2 h-4 w-4" />
                     Create Your First Dashboard
                   </Button>
@@ -675,6 +712,7 @@ export default function WorkspaceDetailPage() {
         dashboard={selectedDashboard}
         onSuccess={loadDashboards}
       />
-    </div>
+      </div>
+    </AppLayout>
   )
 }
