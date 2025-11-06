@@ -22,9 +22,9 @@ import { SchemaExplorerDialog } from '@/components/connections/SchemaExplorerDia
 import { CreateDashboardDialog } from '@/components/dashboards/CreateDashboardDialog'
 import { EditDashboardDialog } from '@/components/dashboards/EditDashboardDialog'
 import { DeleteDashboardDialog } from '@/components/dashboards/DeleteDashboardDialog'
-import { ArrowLeft, Plus, Database, MoreVertical, Pencil, Trash2, TestTube, LayoutDashboard, ListTree } from 'lucide-react'
+import { ArrowLeft, Plus, Database, MoreVertical, Pencil, Trash2, TestTube, LayoutDashboard, ListTree, FolderOpen } from 'lucide-react'
 
-type Tab = 'connections' | 'dashboards' | 'settings'
+type Tab = 'connections' | 'dashboards' | 'queries' | 'settings'
 
 export default function WorkspaceDetailPage() {
   const { user, isLoading: authLoading } = useAuth()
@@ -227,6 +227,16 @@ export default function WorkspaceDetailPage() {
               }`}
             >
               Dashboards
+            </button>
+            <button
+              onClick={() => setActiveTab('queries')}
+              className={`pb-3 border-b-2 text-sm font-medium transition-colors ${
+                activeTab === 'queries'
+                  ? 'border-primary text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Saved Queries
             </button>
             <button
               onClick={() => setActiveTab('settings')}
@@ -460,6 +470,41 @@ export default function WorkspaceDetailPage() {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Saved Queries Tab */}
+        {activeTab === 'queries' && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-semibold">Saved Queries</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Manage and reuse your saved queries
+                </p>
+              </div>
+              <Button onClick={() => router.push(`/workspaces/${workspaceId}/saved-queries`)}>
+                <FolderOpen className="mr-2 h-4 w-4" />
+                View All Queries
+              </Button>
+            </div>
+
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <div className="rounded-full bg-muted p-3 mb-4">
+                  <FolderOpen className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">Saved Queries Library</h3>
+                <p className="text-sm text-muted-foreground text-center mb-4 max-w-sm">
+                  Save queries from the Query Builder to reuse them later. Access your saved
+                  queries from any dashboard or widget.
+                </p>
+                <Button onClick={() => router.push(`/workspaces/${workspaceId}/saved-queries`)}>
+                  <FolderOpen className="mr-2 h-4 w-4" />
+                  Browse Saved Queries
+                </Button>
+              </CardContent>
+            </Card>
           </div>
         )}
 
