@@ -7,19 +7,28 @@ import { queriesApi } from '@/lib/api/queries'
 import { Button } from '@/components/ui/button'
 import { useDashboardFilters } from '@/contexts/DashboardFiltersContext'
 import { applyDashboardFilters } from '@/lib/utils/applyDashboardFilters'
+import { exportToCSV, generateFilename } from '@/lib/utils/export'
 
 interface TableWidgetProps {
   widget: Widget
   workspaceId?: string
+  onExportReady?: (exportFn: () => void) => void
 }
 
-export function TableWidget({ widget, workspaceId }: TableWidgetProps) {
+export function TableWidget({ widget, workspaceId, onExportReady }: TableWidgetProps) {
   const { filters } = useDashboardFilters()
   const [data, setData] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
   const hasQuery = widget.config.connectionId && widget.config.query
+
+  // Expose export function to parent
+  useEffect(() => {
+    if (data && data.data && onExportReady) {
+      onExportReady(() => handleExport())
+    }
+  }, [data, onExportReady])
 
   useEffect(() => {
     if (hasQuery && workspaceId) {
@@ -47,6 +56,23 @@ export function TableWidget({ widget, workspaceId }: TableWidgetProps) {
       setError(err.response?.data?.detail || 'Failed to load data')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  async function handleExport() {
+    if (!data || !data.data || !Array.isArray(data.data)) {
+      return
+    }
+
+    try {
+      const filename = generateFilename(
+        widget.title || 'table',
+        'csv'
+      )
+      await exportToCSV(data.data, filename)
+    } catch (error) {
+      console.error('Export failed:', error)
+      // Could show a toast notification here
     }
   }
 

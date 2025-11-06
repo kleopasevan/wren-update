@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Widget as WidgetType } from '@/lib/api/widgets'
 import { WidgetCard } from './WidgetCard'
 import { ChartWidget } from './ChartWidget'
@@ -17,14 +18,16 @@ interface WidgetProps {
 }
 
 export function Widget({ widget, workspaceId, onEdit, onDelete, onConfigureData }: WidgetProps) {
+  const [exportFn, setExportFn] = useState<(() => void) | undefined>()
+
   const renderWidgetContent = () => {
     switch (widget.type) {
       case 'chart':
-        return <ChartWidget widget={widget} workspaceId={workspaceId} />
+        return <ChartWidget widget={widget} workspaceId={workspaceId} onExportReady={setExportFn} />
       case 'metric':
-        return <MetricWidget widget={widget} workspaceId={workspaceId} />
+        return <MetricWidget widget={widget} workspaceId={workspaceId} onExportReady={setExportFn} />
       case 'table':
-        return <TableWidget widget={widget} workspaceId={workspaceId} />
+        return <TableWidget widget={widget} workspaceId={workspaceId} onExportReady={setExportFn} />
       case 'text':
         return <TextWidget widget={widget} />
       case 'filter':
@@ -44,6 +47,7 @@ export function Widget({ widget, workspaceId, onEdit, onDelete, onConfigureData 
       onEdit={onEdit}
       onDelete={onDelete}
       onConfigureData={onConfigureData}
+      onExport={exportFn}
     >
       {renderWidgetContent()}
     </WidgetCard>

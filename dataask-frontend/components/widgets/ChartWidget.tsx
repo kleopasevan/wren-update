@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { BarChart3, Loader2, Database } from 'lucide-react'
 import { Widget } from '@/lib/api/widgets'
 import { queriesApi } from '@/lib/api/queries'
@@ -10,19 +10,29 @@ import { LineChartComponent } from '@/components/charts/LineChartComponent'
 import { PieChartComponent } from '@/components/charts/PieChartComponent'
 import { useDashboardFilters } from '@/contexts/DashboardFiltersContext'
 import { applyDashboardFilters } from '@/lib/utils/applyDashboardFilters'
+import { exportToPNG, generateFilename } from '@/lib/utils/export'
 
 interface ChartWidgetProps {
   widget: Widget
   workspaceId?: string
+  onExportReady?: (exportFn: () => void) => void
 }
 
-export function ChartWidget({ widget, workspaceId }: ChartWidgetProps) {
+export function ChartWidget({ widget, workspaceId, onExportReady }: ChartWidgetProps) {
   const { filters } = useDashboardFilters()
+  const chartRef = useRef<HTMLDivElement>(null)
   const [data, setData] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
   const hasQuery = widget.config.connectionId && widget.config.query
+
+  // Expose export function to parent
+  useEffect(() => {
+    if (data && data.data && chartRef.current && onExportReady) {
+      onExportReady(() => handleExport())
+    }
+  }, [data, onExportReady])
 
   useEffect(() => {
     if (hasQuery && workspaceId) {
@@ -50,6 +60,26 @@ export function ChartWidget({ widget, workspaceId }: ChartWidgetProps) {
       setError(err.response?.data?.detail || 'Failed to load data')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  async function handleExport() {
+    if (!chartRef.current) {
+      return
+    }
+
+    try {
+      const filename = generateFilename(
+        widget.title || 'chart',
+        'png'
+      )
+      await exportToPNG(chartRef.current, filename, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+      })
+    } catch (error) {
+      console.error('Export failed:', error)
+      // Could show a toast notification here
     }
   }
 
@@ -120,7 +150,7 @@ export function ChartWidget({ widget, workspaceId }: ChartWidgetProps) {
   }
 
   return (
-    <div className="w-full h-full min-h-[250px]">
+    <div ref={chartRef} className="w-full h-full min-h-[250px]">
       {renderChart()}
     </div>
   )

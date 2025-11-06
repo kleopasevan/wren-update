@@ -1,20 +1,23 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { TrendingUp, TrendingDown, Loader2, Database } from 'lucide-react'
 import { Widget } from '@/lib/api/widgets'
 import { queriesApi } from '@/lib/api/queries'
 import { Button } from '@/components/ui/button'
 import { useDashboardFilters } from '@/contexts/DashboardFiltersContext'
 import { applyDashboardFilters } from '@/lib/utils/applyDashboardFilters'
+import { exportToPNG, generateFilename } from '@/lib/utils/export'
 
 interface MetricWidgetProps {
   widget: Widget
   workspaceId?: string
+  onExportReady?: (exportFn: () => void) => void
 }
 
-export function MetricWidget({ widget, workspaceId }: MetricWidgetProps) {
+export function MetricWidget({ widget, workspaceId, onExportReady }: MetricWidgetProps) {
   const { filters } = useDashboardFilters()
+  const metricRef = useRef<HTMLDivElement>(null)
   const [data, setData] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
@@ -23,6 +26,13 @@ export function MetricWidget({ widget, workspaceId }: MetricWidgetProps) {
   const label = widget.config.label || widget.title || 'Metric'
   const format = widget.config.format || 'number'
   const trend = widget.config.trend || 0
+
+  // Expose export function to parent
+  useEffect(() => {
+    if (metricRef.current && onExportReady) {
+      onExportReady(() => handleExport())
+    }
+  }, [data, onExportReady])
 
   useEffect(() => {
     if (hasQuery && workspaceId) {
@@ -53,13 +63,33 @@ export function MetricWidget({ widget, workspaceId }: MetricWidgetProps) {
     }
   }
 
+  async function handleExport() {
+    if (!metricRef.current) {
+      return
+    }
+
+    try {
+      const filename = generateFilename(
+        widget.title || 'metric',
+        'png'
+      )
+      await exportToPNG(metricRef.current, filename, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+      })
+    } catch (error) {
+      console.error('Export failed:', error)
+      // Could show a toast notification here
+    }
+  }
+
   // If no query, use static value from config
   if (!hasQuery) {
     const value = widget.config.value || '0'
     const formattedValue = format === 'currency' ? `$${value}` : value
 
     return (
-      <div className="flex flex-col items-center justify-center h-full min-h-[150px]">
+      <div ref={metricRef} className="flex flex-col items-center justify-center h-full min-h-[150px]">
         <div className="text-4xl font-bold mb-2">{formattedValue}</div>
         <div className="text-sm text-muted-foreground mb-2">{label}</div>
         <div className="text-xs text-muted-foreground mt-1">
@@ -116,7 +146,7 @@ export function MetricWidget({ widget, workspaceId }: MetricWidgetProps) {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center h-full min-h-[150px]">
+    <div ref={metricRef} className="flex flex-col items-center justify-center h-full min-h-[150px]">
       <div className="text-4xl font-bold mb-2">{value}</div>
       <div className="text-sm text-muted-foreground mb-2">{label}</div>
       {trend !== 0 && (

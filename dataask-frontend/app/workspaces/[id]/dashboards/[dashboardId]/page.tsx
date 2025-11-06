@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,6 +16,7 @@ import { DeleteDashboardDialog } from '@/components/dashboards/DeleteDashboardDi
 import { RefreshControls, RefreshInterval } from '@/components/dashboards/RefreshControls'
 import { DashboardFiltersProvider } from '@/contexts/DashboardFiltersContext'
 import { QueryDefinition } from '@/lib/api/queries'
+import { exportToPDF, generateFilename } from '@/lib/utils/export'
 import {
   ArrowLeft,
   Loader2,
@@ -23,6 +24,7 @@ import {
   Pencil,
   Trash2,
   LayoutDashboard,
+  Download,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -37,11 +39,13 @@ export default function DashboardDetailPage() {
   const router = useRouter()
   const workspaceId = params.id as string
   const dashboardId = params.dashboardId as string
+  const widgetsContainerRef = useRef<HTMLDivElement>(null)
 
   const [dashboard, setDashboard] = useState<Dashboard | null>(null)
   const [widgets, setWidgets] = useState<WidgetType[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
+  const [isExporting, setIsExporting] = useState(false)
 
   // Refresh state
   const [refreshInterval, setRefreshInterval] = useState<RefreshInterval>(0)
@@ -169,6 +173,38 @@ export default function DashboardDetailPage() {
     router.push(`/workspaces/${workspaceId}`)
   }
 
+  async function handleExportDashboard() {
+    if (!widgetsContainerRef.current || widgets.length === 0 || !dashboard) {
+      return
+    }
+
+    setIsExporting(true)
+    try {
+      // Get all widget cards
+      const widgetElements = widgetsContainerRef.current.querySelectorAll('.widget-card')
+
+      // Convert to array of {element, title} objects
+      const elements = Array.from(widgetElements).map((el, idx) => ({
+        element: el as HTMLElement,
+        title: widgets[idx]?.title || `Widget ${idx + 1}`,
+      }))
+
+      const filename = generateFilename(
+        dashboard.name || 'dashboard',
+        'pdf'
+      )
+
+      await exportToPDF(elements, filename, {
+        orientation: 'portrait',
+      })
+    } catch (error) {
+      console.error('Export failed:', error)
+      // Could show a toast notification here
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -245,6 +281,15 @@ export default function DashboardDetailPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {widgets.length > 0 && (
+                <>
+                  <DropdownMenuItem onClick={handleExportDashboard} disabled={isExporting}>
+                    <Download className="mr-2 h-4 w-4" />
+                    {isExporting ? 'Exporting...' : 'Export to PDF'}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
               <DropdownMenuItem onClick={handleEditDashboard}>
                 <Pencil className="mr-2 h-4 w-4" />
                 Edit Dashboard
@@ -292,16 +337,17 @@ export default function DashboardDetailPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div ref={widgetsContainerRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {widgets.map((widget) => (
-            <Widget
-              key={`${widget.id}-${refreshKey}`}
-              widget={widget}
-              workspaceId={workspaceId}
-              onEdit={handleEditWidget}
-              onDelete={handleDeleteWidget}
-              onConfigureData={handleConfigureData}
-            />
+            <div key={`${widget.id}-${refreshKey}`} className="widget-card">
+              <Widget
+                widget={widget}
+                workspaceId={workspaceId}
+                onEdit={handleEditWidget}
+                onDelete={handleDeleteWidget}
+                onConfigureData={handleConfigureData}
+              />
+            </div>
           ))}
         </div>
       )}

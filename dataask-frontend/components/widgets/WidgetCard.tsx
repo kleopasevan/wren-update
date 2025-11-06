@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { MoreVertical, Pencil, Trash2, Database } from 'lucide-react'
+import { MoreVertical, Pencil, Trash2, Database, Download } from 'lucide-react'
 import { Widget } from '@/lib/api/widgets'
 
 interface WidgetCardProps {
@@ -17,10 +17,11 @@ interface WidgetCardProps {
   onEdit: (widget: Widget) => void
   onDelete: (widget: Widget) => void
   onConfigureData?: (widget: Widget) => void
+  onExport?: () => void
   children: React.ReactNode
 }
 
-export function WidgetCard({ widget, onEdit, onDelete, onConfigureData, children }: WidgetCardProps) {
+export function WidgetCard({ widget, onEdit, onDelete, onConfigureData, onExport, children }: WidgetCardProps) {
   // Only show Configure Data for chart, table, and metric widgets
   const showConfigureData = onConfigureData && (widget.type === 'chart' || widget.type === 'table' || widget.type === 'metric')
 
@@ -46,6 +47,15 @@ export function WidgetCard({ widget, onEdit, onDelete, onConfigureData, children
                 <DropdownMenuItem onClick={() => onConfigureData(widget)}>
                   <Database className="mr-2 h-4 w-4" />
                   Configure Data
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
+            {onExport && (
+              <>
+                <DropdownMenuItem onClick={onExport}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Export
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
               </>
