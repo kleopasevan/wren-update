@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Loader2, Play, Plus, Trash2, Code, Sparkles, Blocks } from 'lucide-react'
+import { Loader2, Play, Plus, Trash2, Code, Sparkles, Blocks, Save, FolderOpen } from 'lucide-react'
 import { connectionsApi, Table } from '@/lib/api/connections'
 import { queriesApi, QueryDefinition, QueryFilter, QueryOrderBy, QueryJoin } from '@/lib/api/queries'
 import {
@@ -25,6 +25,8 @@ import {
 } from '@/components/ui/dialog'
 import { AskAI } from '@/components/ai/AskAI'
 import { JoinBuilder } from '@/components/queries/JoinBuilder'
+import { SavedQueriesDialog } from '@/components/queries/SavedQueriesDialog'
+import { SaveQueryDialog } from '@/components/queries/SaveQueryDialog'
 
 type QueryMode = 'visual' | 'ai'
 
@@ -55,6 +57,10 @@ export function QueryBuilder({ workspaceId, connectionId, onSave }: QueryBuilder
   // AI mode state
   const [aiGeneratedSql, setAiGeneratedSql] = useState<string>('')
   const [aiQuestion, setAiQuestion] = useState<string>('')
+
+  // Saved queries dialog state
+  const [savedQueriesDialogOpen, setSavedQueriesDialogOpen] = useState(false)
+  const [saveQueryDialogOpen, setSaveQueryDialogOpen] = useState(false)
 
   useEffect(() => {
     loadTables()
@@ -176,6 +182,44 @@ export function QueryBuilder({ workspaceId, connectionId, onSave }: QueryBuilder
     onSave(query)
   }
 
+  function handleLoadSavedQuery(query: QueryDefinition, connectionIdFromQuery: string) {
+    // Load the query definition into the visual builder
+    setMode('visual')
+
+    // Set table
+    const table = tables.find((t) => t.name === query.table)
+    setSelectedTable(table || null)
+
+    // Set columns
+    setSelectedColumns(query.columns || [])
+
+    // Set joins
+    setJoins(query.joins || [])
+
+    // Set filters
+    setFilters(query.filters || [])
+
+    // Set order by
+    setOrderBy(query.order_by || [])
+
+    // Set limit
+    setLimit(query.limit || 100)
+  }
+
+  function getCurrentQueryDefinition(): QueryDefinition | null {
+    if (mode === 'visual' && selectedTable) {
+      return {
+        table: selectedTable.name,
+        joins: joins.length > 0 ? joins : undefined,
+        columns: selectedColumns.length > 0 ? selectedColumns : undefined,
+        filters: filters.length > 0 ? filters : undefined,
+        order_by: orderBy.length > 0 ? orderBy : undefined,
+        limit,
+      }
+    }
+    return null
+  }
+
   if (isLoadingTables) {
     return (
       <Card>
@@ -248,6 +292,25 @@ export function QueryBuilder({ workspaceId, connectionId, onSave }: QueryBuilder
               </CardDescription>
             </div>
             <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSavedQueriesDialogOpen(true)}
+              >
+                <FolderOpen className="h-4 w-4 mr-2" />
+                Load Query
+              </Button>
+              {mode === 'visual' && selectedTable && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSaveQueryDialogOpen(true)}
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Query
+                </Button>
+              )}
+              <div className="h-4 w-px bg-border" />
               <Button
                 variant={mode === 'visual' ? 'default' : 'outline'}
                 size="sm"
@@ -546,6 +609,25 @@ export function QueryBuilder({ workspaceId, connectionId, onSave }: QueryBuilder
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Saved Queries Dialog */}
+      <SavedQueriesDialog
+        open={savedQueriesDialogOpen}
+        onOpenChange={setSavedQueriesDialogOpen}
+        workspaceId={workspaceId}
+        onSelect={handleLoadSavedQuery}
+      />
+
+      {/* Save Query Dialog */}
+      {getCurrentQueryDefinition() && (
+        <SaveQueryDialog
+          open={saveQueryDialogOpen}
+          onOpenChange={setSaveQueryDialogOpen}
+          workspaceId={workspaceId}
+          connectionId={connectionId}
+          query={getCurrentQueryDefinition()!}
+        />
+      )}
     </>
   )
 }
