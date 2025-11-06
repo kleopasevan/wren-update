@@ -12,6 +12,13 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Widget, widgetsApi } from '@/lib/api/widgets'
 import { Loader2 } from 'lucide-react'
 
@@ -33,12 +40,20 @@ export function EditWidgetDialog({
   onSuccess,
 }: EditWidgetDialogProps) {
   const [title, setTitle] = useState('')
+  const [chartType, setChartType] = useState('bar')
+  const [gaugeMin, setGaugeMin] = useState('0')
+  const [gaugeMax, setGaugeMax] = useState('100')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
     if (widget) {
       setTitle(widget.title || '')
+      if (widget.type === 'chart') {
+        setChartType(widget.config.chartType || 'bar')
+        setGaugeMin(String(widget.config.gaugeMin || 0))
+        setGaugeMax(String(widget.config.gaugeMax || 100))
+      }
     }
   }, [widget])
 
@@ -50,9 +65,21 @@ export function EditWidgetDialog({
     setIsLoading(true)
 
     try {
-      await widgetsApi.update(workspaceId, dashboardId, widget.id, {
+      const updateData: any = {
         title: title.trim() || undefined,
-      })
+      }
+
+      // Include chart-specific config if this is a chart widget
+      if (widget.type === 'chart') {
+        updateData.config = {
+          ...widget.config,
+          chartType,
+          gaugeMin: parseFloat(gaugeMin) || 0,
+          gaugeMax: parseFloat(gaugeMax) || 100,
+        }
+      }
+
+      await widgetsApi.update(workspaceId, dashboardId, widget.id, updateData)
 
       onOpenChange(false)
       onSuccess()
@@ -69,7 +96,7 @@ export function EditWidgetDialog({
         <DialogHeader>
           <DialogTitle>Edit Widget</DialogTitle>
           <DialogDescription>
-            Update the widget title. Type: {widget?.type}
+            Update widget settings. Type: {widget?.type}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
@@ -83,6 +110,55 @@ export function EditWidgetDialog({
                 placeholder="My Widget"
               />
             </div>
+
+            {/* Chart-specific configuration */}
+            {widget?.type === 'chart' && (
+              <>
+                <div className="grid gap-2">
+                  <Label htmlFor="chartType">Chart Type</Label>
+                  <Select value={chartType} onValueChange={setChartType}>
+                    <SelectTrigger id="chartType">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="bar">Bar Chart</SelectItem>
+                      <SelectItem value="line">Line Chart</SelectItem>
+                      <SelectItem value="area">Area Chart</SelectItem>
+                      <SelectItem value="pie">Pie Chart</SelectItem>
+                      <SelectItem value="scatter">Scatter Chart</SelectItem>
+                      <SelectItem value="gauge">Gauge</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Gauge-specific fields */}
+                {chartType === 'gauge' && (
+                  <>
+                    <div className="grid gap-2">
+                      <Label htmlFor="gaugeMin">Minimum Value</Label>
+                      <Input
+                        id="gaugeMin"
+                        type="number"
+                        value={gaugeMin}
+                        onChange={(e) => setGaugeMin(e.target.value)}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="gaugeMax">Maximum Value</Label>
+                      <Input
+                        id="gaugeMax"
+                        type="number"
+                        value={gaugeMax}
+                        onChange={(e) => setGaugeMax(e.target.value)}
+                        placeholder="100"
+                      />
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
           <DialogFooter>

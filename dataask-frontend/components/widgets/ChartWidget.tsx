@@ -8,6 +8,9 @@ import { Button } from '@/components/ui/button'
 import { BarChartComponent } from '@/components/charts/BarChartComponent'
 import { LineChartComponent } from '@/components/charts/LineChartComponent'
 import { PieChartComponent } from '@/components/charts/PieChartComponent'
+import { AreaChartComponent } from '@/components/charts/AreaChartComponent'
+import { ScatterChartComponent } from '@/components/charts/ScatterChartComponent'
+import { GaugeChartComponent } from '@/components/charts/GaugeChartComponent'
 import { useDashboardFilters } from '@/contexts/DashboardFiltersContext'
 import { applyDashboardFilters } from '@/lib/utils/applyDashboardFilters'
 import { exportToPNG, generateFilename } from '@/lib/utils/export'
@@ -144,6 +147,18 @@ export function ChartWidget({ widget, workspaceId, onExportReady }: ChartWidgetP
         return <LineChartComponent data={chartData} xKey={xKey} yKey={yKey} />
       case 'pie':
         return <PieChartComponent data={chartData} nameKey={xKey} valueKey={yKey} />
+      case 'area':
+        return <AreaChartComponent data={chartData} xKey={xKey} yKey={yKey} />
+      case 'scatter':
+        return <ScatterChartComponent data={chartData} xKey={xKey} yKey={yKey} />
+      case 'gauge':
+        // Gauge chart shows a single value from first row
+        const value = typeof chartData[0][yKey] === 'number'
+          ? chartData[0][yKey]
+          : parseFloat(chartData[0][yKey]) || 0
+        const min = widget.config.gaugeMin || 0
+        const max = widget.config.gaugeMax || 100
+        return <GaugeChartComponent value={value} min={min} max={max} label={yKey} />
       default:
         return <BarChartComponent data={chartData} xKey={xKey} yKey={yKey} />
     }
