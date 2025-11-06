@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories.connection_repository import ConnectionRepository
 from app.models.connection import Connection
+from app.clients.ibis_client import ibis_client
 
 
 class ConnectionService:
@@ -138,29 +139,79 @@ class ConnectionService:
     async def test_connection(
         self, connection_id: uuid.UUID, workspace_id: uuid.UUID
     ) -> dict:
-        """Test a database connection."""
+        """Test a database connection via ibis-server."""
         # Get connection with permission check
         connection = await self.get_connection(connection_id, workspace_id)
-
-        # TODO: Integrate with ibis-server to test the connection
-        # For now, we'll just mark it as untested
-        # In Phase 1.4, we'll implement actual connection testing via ibis-server
 
         # Decrypt connection info
         connection_info = self.connection_repo.get_decrypted_connection_info(connection)
 
-        # Update test status (placeholder)
+        # Test connection via ibis-server
+        result = await ibis_client.test_connection(connection.type, connection_info)
+
+        # Update test status based on result
+        test_status = "success" if result["status"] == "success" else "failed"
+        test_message = result["message"]
+
         await self.connection_repo.update_test_status(
             connection=connection,
-            test_status="success",
-            test_message="Connection test not yet implemented",
+            test_status=test_status,
+            test_message=test_message,
         )
 
         return {
-            "status": "success",
-            "message": "Connection test will be implemented in Phase 1.4",
+            "status": result["status"],
+            "message": result["message"],
             "tested_at": connection.last_tested_at.isoformat() if connection.last_tested_at else None,
         }
+
+    async def get_tables(
+        self, connection_id: uuid.UUID, workspace_id: uuid.UUID
+    ) -> list[dict]:
+        """Get list of tables from the connection."""
+        # Get connection with permission check
+        connection = await self.get_connection(connection_id, workspace_id)
+
+        # Decrypt connection info
+        connection_info = self.connection_repo.get_decrypted_connection_info(connection)
+
+        # Get tables via ibis-server
+        tables = await ibis_client.get_tables(connection.type, connection_info)
+        return tables
+
+    async def get_constraints(
+        self, connection_id: uuid.UUID, workspace_id: uuid.UUID
+    ) -> list[dict]:
+        """Get constraints (foreign keys, etc.) from the connection."""
+        # Get connection with permission check
+        connection = await self.get_connection(connection_id, workspace_id)
+
+        # Decrypt connection info
+        connection_info = self.connection_repo.get_decrypted_connection_info(connection)
+
+        # Get constraints via ibis-server
+        constraints = await ibis_client.get_constraints(connection.type, connection_info)
+        return constraints
+
+    async def preview_table(
+        self,
+        connection_id: uuid.UUID,
+        workspace_id: uuid.UUID,
+        table_name: str,
+        limit: int = 10,
+    ) -> dict:
+        """Preview data from a table."""
+        # Get connection with permission check
+        connection = await self.get_connection(connection_id, workspace_id)
+
+        # Decrypt connection info
+        connection_info = self.connection_repo.get_decrypted_connection_info(connection)
+
+        # Preview table via ibis-server
+        data = await ibis_client.preview_table(
+            connection.type, connection_info, table_name, limit
+        )
+        return data
 
     def get_connection_info_for_response(self, connection: Connection) -> dict:
         """Get decrypted connection info (for API responses - sensitive fields masked)."""

@@ -45,6 +45,37 @@ export interface TestConnectionResponse {
   tested_at?: string
 }
 
+export interface TableColumn {
+  name: string
+  type: string
+  notNull: boolean
+  description?: string
+  properties?: Record<string, any>
+  nestedColumns?: TableColumn[]
+}
+
+export interface Table {
+  name: string
+  columns: TableColumn[]
+  description?: string
+  properties?: {
+    schema?: string
+    catalog?: string
+    table?: string
+    path?: string
+  }
+  primaryKey?: string
+}
+
+export interface Constraint {
+  constraintName: string
+  constraintType: 'PRIMARY KEY' | 'FOREIGN KEY' | 'UNIQUE'
+  constraintTable: string
+  constraintColumn: string
+  constraintedTable: string
+  constraintedColumn: string
+}
+
 export const connectionsApi = {
   /**
    * List all connections for a workspace
@@ -103,6 +134,42 @@ export const connectionsApi = {
   async test(workspaceId: string, connectionId: string): Promise<TestConnectionResponse> {
     const response = await apiClient.post<TestConnectionResponse>(
       `/workspaces/${workspaceId}/connections/${connectionId}/test`
+    )
+    return response.data
+  },
+
+  /**
+   * Get tables from a connection
+   */
+  async getTables(workspaceId: string, connectionId: string): Promise<Table[]> {
+    const response = await apiClient.get<Table[]>(
+      `/workspaces/${workspaceId}/connections/${connectionId}/tables`
+    )
+    return response.data
+  },
+
+  /**
+   * Get constraints from a connection
+   */
+  async getConstraints(workspaceId: string, connectionId: string): Promise<Constraint[]> {
+    const response = await apiClient.get<Constraint[]>(
+      `/workspaces/${workspaceId}/connections/${connectionId}/constraints`
+    )
+    return response.data
+  },
+
+  /**
+   * Preview data from a table
+   */
+  async previewTable(
+    workspaceId: string,
+    connectionId: string,
+    tableName: string,
+    limit: number = 10
+  ): Promise<any> {
+    const response = await apiClient.get(
+      `/workspaces/${workspaceId}/connections/${connectionId}/tables/${encodeURIComponent(tableName)}/preview`,
+      { params: { limit } }
     )
     return response.data
   },

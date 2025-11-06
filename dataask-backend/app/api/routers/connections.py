@@ -189,3 +189,61 @@ async def test_connection(
     result = await connection_service.test_connection(connection_id, workspace_id)
 
     return result
+
+
+@router.get("/workspaces/{workspace_id}/connections/{connection_id}/tables")
+async def get_tables(
+    workspace_id: uuid.UUID,
+    connection_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> list[dict]:
+    """Get list of tables from a connection."""
+    # Check workspace permission
+    await get_workspace_and_check_permission(workspace_id, current_user, db)
+
+    # Get tables
+    connection_service = ConnectionService(db)
+    tables = await connection_service.get_tables(connection_id, workspace_id)
+
+    return tables
+
+
+@router.get("/workspaces/{workspace_id}/connections/{connection_id}/constraints")
+async def get_constraints(
+    workspace_id: uuid.UUID,
+    connection_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> list[dict]:
+    """Get constraints from a connection."""
+    # Check workspace permission
+    await get_workspace_and_check_permission(workspace_id, current_user, db)
+
+    # Get constraints
+    connection_service = ConnectionService(db)
+    constraints = await connection_service.get_constraints(connection_id, workspace_id)
+
+    return constraints
+
+
+@router.get("/workspaces/{workspace_id}/connections/{connection_id}/tables/{table_name}/preview")
+async def preview_table(
+    workspace_id: uuid.UUID,
+    connection_id: uuid.UUID,
+    table_name: str,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = 10,
+) -> dict:
+    """Preview data from a table."""
+    # Check workspace permission
+    await get_workspace_and_check_permission(workspace_id, current_user, db)
+
+    # Preview table
+    connection_service = ConnectionService(db)
+    data = await connection_service.preview_table(
+        connection_id, workspace_id, table_name, limit
+    )
+
+    return data
