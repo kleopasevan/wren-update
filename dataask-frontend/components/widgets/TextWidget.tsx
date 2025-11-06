@@ -9,20 +9,22 @@ interface TextWidgetProps {
 
 export function TextWidget({ widget }: TextWidgetProps) {
   const content = widget.config.content || ''
-  const alignment = widget.config.alignment || 'left'
-  const fontSize = widget.config.fontSize || 'medium'
+  const alignment = (widget.config.alignment || 'left') as 'left' | 'center' | 'right'
+  const fontSize = (widget.config.fontSize || 'medium') as 'small' | 'medium' | 'large'
 
-  const fontSizeClass = {
+  const fontSizeClasses: Record<'small' | 'medium' | 'large', string> = {
     small: 'text-sm',
     medium: 'text-base',
     large: 'text-lg',
-  }[fontSize] || 'text-base'
+  }
+  const fontSizeClass = fontSizeClasses[fontSize] || 'text-base'
 
-  const alignmentClass = {
+  const alignmentClasses: Record<'left' | 'center' | 'right', string> = {
     left: 'text-left',
     center: 'text-center',
     right: 'text-right',
-  }[alignment] || 'text-left'
+  }
+  const alignmentClass = alignmentClasses[alignment] || 'text-left'
 
   if (!content) {
     return (
