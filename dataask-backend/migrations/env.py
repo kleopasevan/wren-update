@@ -20,7 +20,8 @@ from app.models.dashboard import Dashboard, Widget  # noqa: F401
 config = context.config
 
 # Set sqlalchemy.url from settings
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace("+asyncpg", ""))
+# Keep asyncpg for async migrations
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 # Interpret the config file for Python logging
 if config.config_file_name is not None:

@@ -5,7 +5,7 @@ from typing import Any
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 from app.config import settings
 
@@ -13,7 +13,7 @@ from app.config import settings
 def _get_fernet() -> Fernet:
     """Get Fernet cipher instance."""
     # Derive a 32-byte key from the encryption key
-    kdf = PBKDF2(
+    kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
         salt=b"dataask_salt",  # In production, use a random salt stored securely

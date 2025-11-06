@@ -70,7 +70,9 @@ class PostgresConnectionInfo(BaseModel):
     database: str
     user: str
     password: str
-    schema: Optional[str] = "public"
+    db_schema: Optional[str] = Field(default="public", alias="schema")
+    
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class MySQLConnectionInfo(BaseModel):
@@ -98,9 +100,11 @@ class SnowflakeConnectionInfo(BaseModel):
     user: str
     password: str
     database: Optional[str] = None
-    schema: Optional[str] = None
+    db_schema: Optional[str] = Field(default=None, alias="schema")
     warehouse: Optional[str] = None
     role: Optional[str] = None
+    
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class RedshiftConnectionInfo(BaseModel):
@@ -111,7 +115,9 @@ class RedshiftConnectionInfo(BaseModel):
     database: str
     user: str
     password: str
-    schema: Optional[str] = "public"
+    db_schema: Optional[str] = Field(default="public", alias="schema")
+    
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class ClickHouseConnectionInfo(BaseModel):
@@ -132,7 +138,9 @@ class MSSQLConnectionInfo(BaseModel):
     database: str
     user: str
     password: str
-    schema: Optional[str] = "dbo"
+    db_schema: Optional[str] = Field(default="dbo", alias="schema")
+    
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class TrinoConnectionInfo(BaseModel):
@@ -141,6 +149,8 @@ class TrinoConnectionInfo(BaseModel):
     host: str
     port: int = 8080
     catalog: str
-    schema: Optional[str] = None
+    db_schema: Optional[str] = Field(default=None, alias="schema")
     user: Optional[str] = None
     password: Optional[str] = None
+    
+    model_config = ConfigDict(populate_by_name=True)
