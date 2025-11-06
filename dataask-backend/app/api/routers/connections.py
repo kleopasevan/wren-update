@@ -17,6 +17,10 @@ from app.schemas.connection import (
     ConnectionUpdate,
     ConnectionTestResponse,
 )
+from app.schemas.query import (
+    QueryExecuteRequest,
+    QueryExecuteResponse,
+)
 from app.services.connection_service import ConnectionService
 
 router = APIRouter()
@@ -247,3 +251,59 @@ async def preview_table(
     )
 
     return data
+
+
+@router.post("/workspaces/{workspace_id}/connections/{connection_id}/query", response_model=QueryExecuteResponse)
+async def execute_query(
+    workspace_id: uuid.UUID,
+    connection_id: uuid.UUID,
+    request: QueryExecuteRequest,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Execute a query (visual builder or raw SQL)."""
+    # Check workspace permission
+    await get_workspace_and_check_permission(workspace_id, current_user, db)
+
+    connection_service = ConnectionService(db)
+
+    # Execute either visual query or raw SQL
+    if request.query:
+        # Build SQL from visual query definition
+        sql, data = await connection_service.build_and_execute_query(
+            connection_id=connection_id,
+            workspace_id=workspace_id,
+            table=request.query.table,
+            columns=request.query.columns,
+            filters=[f.model_dump() for f in request.query.filters] if request.query.filters else None,
+            group_by=request.query.group_by,
+            order_by=[o.model_dump() for o in request.query.order_by] if request.query.order_by else None,
+            limit=request.query.limit or request.limit,
+        )
+    elif request.sql:
+        # Execute raw SQL
+        sql = request.sql
+        data = await connection_service.execute_query(
+            connection_id=connection_id,
+            workspace_id=workspace_id,
+            sql=sql,
+            limit=request.limit,
+        )
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Either 'query' or 'sql' must be provided",
+        )
+
+    # Count rows if data has them
+    row_count = None
+    if isinstance(data, dict) and "data" in data:
+        row_count = len(data["data"])
+    elif isinstance(data, list):
+        row_count = len(data)
+
+    return {
+        "sql": sql,
+        "data": data,
+        "row_count": row_count,
+    }

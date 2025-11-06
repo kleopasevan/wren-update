@@ -169,6 +169,129 @@ class IbisClient:
             response.raise_for_status()
             return response.json()
 
+    async def execute_query(
+        self,
+        connection_type: str,
+        connection_info: dict,
+        sql: str,
+        limit: int | None = None,
+    ) -> dict[str, Any]:
+        """
+        Execute a custom SQL query.
+
+        Args:
+            connection_type: Type of database
+            connection_info: Connection parameters
+            sql: SQL query to execute
+            limit: Optional limit on number of rows
+
+        Returns:
+            dict with columns and data
+        """
+        data_source = self._get_data_source_path(connection_type)
+        url = f"{self.base_url}/v2/connector/{data_source}/query"
+
+        payload = {
+            "sql": sql,
+            "manifestStr": '{"catalog": "test", "schema": "test", "models": []}',
+            "connectionInfo": connection_info,
+        }
+
+        params = {}
+        if limit is not None:
+            params["limit"] = limit
+
+        async with httpx.AsyncClient(timeout=120.0) as client:  # Longer timeout for queries
+            response = await client.post(url, json=payload, params=params)
+            response.raise_for_status()
+            return response.json()
+
+    def build_sql_query(
+        self,
+        table: str,
+        columns: list[str] | None = None,
+        filters: list[dict] | None = None,
+        group_by: list[str] | None = None,
+        order_by: list[dict] | None = None,
+        limit: int | None = None,
+    ) -> str:
+        """
+        Build a SQL query from components.
+
+        Args:
+            table: Table name
+            columns: List of column names (None = SELECT *)
+            filters: List of filter dicts with {column, operator, value}
+            group_by: List of columns to group by
+            order_by: List of order dicts with {column, direction}
+            limit: Row limit
+
+        Returns:
+            SQL query string
+        """
+        # SELECT clause
+        if columns:
+            cols_str = ", ".join(columns)
+        else:
+            cols_str = "*"
+
+        sql = f"SELECT {cols_str} FROM {table}"
+
+        # WHERE clause
+        if filters:
+            where_clauses = []
+            for f in filters:
+                col = f["column"]
+                op = f["operator"]
+                val = f["value"]
+
+                # Handle different operators
+                if op == "=":
+                    where_clauses.append(f"{col} = '{val}'")
+                elif op == "!=":
+                    where_clauses.append(f"{col} != '{val}'")
+                elif op == ">":
+                    where_clauses.append(f"{col} > {val}")
+                elif op == ">=":
+                    where_clauses.append(f"{col} >= {val}")
+                elif op == "<":
+                    where_clauses.append(f"{col} < {val}")
+                elif op == "<=":
+                    where_clauses.append(f"{col} <= {val}")
+                elif op == "LIKE":
+                    where_clauses.append(f"{col} LIKE '{val}'")
+                elif op == "IN":
+                    # val should be a list
+                    if isinstance(val, list):
+                        vals_str = ", ".join([f"'{v}'" for v in val])
+                        where_clauses.append(f"{col} IN ({vals_str})")
+                elif op == "IS NULL":
+                    where_clauses.append(f"{col} IS NULL")
+                elif op == "IS NOT NULL":
+                    where_clauses.append(f"{col} IS NOT NULL")
+
+            if where_clauses:
+                sql += " WHERE " + " AND ".join(where_clauses)
+
+        # GROUP BY clause
+        if group_by:
+            sql += " GROUP BY " + ", ".join(group_by)
+
+        # ORDER BY clause
+        if order_by:
+            order_clauses = []
+            for o in order_by:
+                col = o["column"]
+                direction = o.get("direction", "ASC")
+                order_clauses.append(f"{col} {direction}")
+            sql += " ORDER BY " + ", ".join(order_clauses)
+
+        # LIMIT clause
+        if limit:
+            sql += f" LIMIT {limit}"
+
+        return sql
+
 
 # Singleton instance
 ibis_client = IbisClient()

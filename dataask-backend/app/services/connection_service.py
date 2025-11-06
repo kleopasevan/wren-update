@@ -213,6 +213,61 @@ class ConnectionService:
         )
         return data
 
+    async def execute_query(
+        self,
+        connection_id: uuid.UUID,
+        workspace_id: uuid.UUID,
+        sql: str,
+        limit: Optional[int] = None,
+    ) -> dict:
+        """Execute a SQL query on a connection."""
+        # Get connection with permission check
+        connection = await self.get_connection(connection_id, workspace_id)
+
+        # Decrypt connection info
+        connection_info = self.connection_repo.get_decrypted_connection_info(connection)
+
+        # Execute query via ibis-server
+        data = await ibis_client.execute_query(
+            connection.type, connection_info, sql, limit
+        )
+        return data
+
+    async def build_and_execute_query(
+        self,
+        connection_id: uuid.UUID,
+        workspace_id: uuid.UUID,
+        table: str,
+        columns: Optional[list[str]] = None,
+        filters: Optional[list[dict]] = None,
+        group_by: Optional[list[str]] = None,
+        order_by: Optional[list[dict]] = None,
+        limit: Optional[int] = None,
+    ) -> tuple[str, dict]:
+        """Build and execute a query from visual components."""
+        # Get connection with permission check
+        connection = await self.get_connection(connection_id, workspace_id)
+
+        # Build SQL query
+        sql = ibis_client.build_sql_query(
+            table=table,
+            columns=columns,
+            filters=filters,
+            group_by=group_by,
+            order_by=order_by,
+            limit=limit,
+        )
+
+        # Decrypt connection info
+        connection_info = self.connection_repo.get_decrypted_connection_info(connection)
+
+        # Execute query
+        data = await ibis_client.execute_query(
+            connection.type, connection_info, sql, None  # limit already in SQL
+        )
+
+        return sql, data
+
     def get_connection_info_for_response(self, connection: Connection) -> dict:
         """Get decrypted connection info (for API responses - sensitive fields masked)."""
         decrypted_info = self.connection_repo.get_decrypted_connection_info(connection)
