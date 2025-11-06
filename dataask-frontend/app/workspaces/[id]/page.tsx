@@ -23,6 +23,7 @@ import { CreateDashboardDialog } from '@/components/dashboards/CreateDashboardDi
 import { EditDashboardDialog } from '@/components/dashboards/EditDashboardDialog'
 import { DeleteDashboardDialog } from '@/components/dashboards/DeleteDashboardDialog'
 import { ArrowLeft, Plus, Database, MoreVertical, Pencil, Trash2, TestTube, LayoutDashboard, ListTree, FolderOpen, History, Clock } from 'lucide-react'
+import { SidebarLayout } from '@/components/layout/sidebar-layout'
 
 type Tab = 'connections' | 'dashboards' | 'queries' | 'history' | 'schedules' | 'settings'
 
@@ -179,8 +180,12 @@ export default function WorkspaceDetailPage() {
   }
 
   return (
-    <div className="min-h-screen p-8">
-      <div className="max-w-7xl mx-auto">
+    <SidebarLayout
+      dashboards={dashboards.map(d => ({ id: d.id, name: d.name }))}
+      connections={connections.map(c => ({ id: c.id, name: c.name }))}
+    >
+      <div className="min-h-screen p-8">
+        <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <Button
@@ -616,6 +621,7 @@ export default function WorkspaceDetailPage() {
             </Card>
           </div>
         )}
+        </div>
       </div>
 
       {/* Connection Dialogs */}
@@ -675,6 +681,6 @@ export default function WorkspaceDetailPage() {
         dashboard={selectedDashboard}
         onSuccess={loadDashboards}
       />
-    </div>
+    </SidebarLayout>
   )
 }
