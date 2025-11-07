@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { savedQueriesApi, SavedQuery } from '@/lib/api/saved-queries'
 import { connectionsApi, Connection } from '@/lib/api/connections'
+import { AppLayout } from '@/components/layout/app-layout'
 import {
   ArrowLeft,
   Loader2,
@@ -117,24 +118,30 @@ export default function SavedQueriesPage() {
 
   if (error && queries.length === 0) {
     return (
-      <div className="container mx-auto p-6">
-        <Card className="border-destructive">
-          <CardHeader>
-            <CardTitle className="text-destructive">Error</CardTitle>
-            <CardDescription>{error}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={() => router.push(`/workspaces/${workspaceId}`)}>
-              Back to Workspace
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <AppLayout>
+        <div className="flex-1 overflow-auto p-8 bg-background">
+          <div className="max-w-7xl mx-auto">
+            <Card className="border-destructive">
+              <CardHeader>
+                <CardTitle className="text-destructive">Error</CardTitle>
+                <CardDescription>{error}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={() => router.push(`/workspaces/${workspaceId}`)}>
+                  Back to Workspace
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </AppLayout>
     )
   }
 
   return (
-    <div className="container mx-auto p-6">
+    <AppLayout>
+      <div className="flex-1 overflow-auto p-8 bg-background">
+        <div className="max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-4">
@@ -253,35 +260,37 @@ export default function SavedQueriesPage() {
         </div>
       )}
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Saved Query</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete "{queryToDelete?.name}"? This action cannot
-              be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDeleteDialogOpen(false)}
-              disabled={isDeleting}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleConfirmDelete}
-              disabled={isDeleting}
-            >
-              {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+          {/* Delete Confirmation Dialog */}
+          <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Delete Saved Query</DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to delete "{queryToDelete?.name}"? This action cannot
+                  be undone.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setDeleteDialogOpen(false)}
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleConfirmDelete}
+                  disabled={isDeleting}
+                >
+                  {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Delete
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+    </AppLayout>
   )
 }

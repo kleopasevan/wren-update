@@ -21,6 +21,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { queryHistoryApi, QueryHistory } from '@/lib/api/query-history'
 import { connectionsApi, Connection } from '@/lib/api/connections'
+import { AppLayout } from '@/components/layout/app-layout'
 import {
   Loader2,
   Search,
@@ -135,7 +136,9 @@ export default function QueryHistoryPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl">
+    <AppLayout>
+      <div className="flex-1 overflow-auto p-8 bg-background">
+        <div className="max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -343,6 +346,8 @@ export default function QueryHistoryPage() {
           })}
         </div>
       )}
-    </div>
+        </div>
+      </div>
+    </AppLayout>
   )
 }

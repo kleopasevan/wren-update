@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { scheduledQueriesApi, ScheduledQuery } from '@/lib/api/scheduled-queries'
+import { AppLayout } from '@/components/layout/app-layout'
 import {
   Loader2,
   Plus,
@@ -86,7 +87,9 @@ export default function ScheduledQueriesPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl">
+    <AppLayout>
+      <div className="flex-1 overflow-auto p-8 bg-background">
+        <div className="max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-4">
@@ -253,6 +256,8 @@ export default function ScheduledQueriesPage() {
           ))}
         </div>
       )}
-    </div>
+        </div>
+      </div>
+    </AppLayout>
   )
 }

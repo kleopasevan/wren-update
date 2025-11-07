@@ -19,6 +19,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { scheduledQueriesApi, ScheduledQuery } from '@/lib/api/scheduled-queries'
 import { connectionsApi, Connection } from '@/lib/api/connections'
 import { ArrowLeft, Loader2 } from 'lucide-react'
+import { AppLayout } from '@/components/layout/app-layout'
 
 export default function EditScheduledQueryPage() {
   const params = useParams()
@@ -177,7 +178,9 @@ export default function EditScheduledQueryPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
+    <AppLayout>
+      <div className="flex-1 overflow-auto p-8 bg-background">
+        <div className="max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center space-x-4 mb-6">
         <Button
@@ -446,6 +449,8 @@ export default function EditScheduledQueryPage() {
           </Button>
         </div>
       </form>
-    </div>
+        </div>
+      </div>
+    </AppLayout>
   )
 }
