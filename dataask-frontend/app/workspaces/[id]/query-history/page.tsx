@@ -139,20 +139,31 @@ export default function QueryHistoryPage() {
     <AppLayout>
       <div className="flex-1 overflow-auto p-8 bg-background">
         <div className="max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Query Execution History</h1>
-          <p className="text-muted-foreground mt-1">
-            View all executed queries with details and performance metrics
-          </p>
-        </div>
-        <Button variant="outline" onClick={() => router.push(`/workspaces/${workspaceId}`)}>
-          Back to Workspace
-        </Button>
-      </div>
+          {/* Header */}
+          <div className="mb-8">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push(`/workspaces/${workspaceId}`)}
+              className="mb-4 text-black"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Workspace
+            </Button>
 
-      {/* Filters */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight text-black">
+                  Query Execution History
+                </h1>
+                <p className="text-muted-foreground mt-2">
+                  View all executed queries with details and performance metrics
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Filters */}
       <Card className="mb-6">
         <CardHeader>
           <CardTitle>Filters</CardTitle>

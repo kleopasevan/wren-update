@@ -90,31 +90,38 @@ export default function ScheduledQueriesPage() {
     <AppLayout>
       <div className="flex-1 overflow-auto p-8 bg-background">
         <div className="max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => router.push(`/workspaces/${workspaceId}`)}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">Scheduled Queries</h1>
-            <p className="text-muted-foreground mt-1">
-              Automate query execution and email reports
-            </p>
-          </div>
-        </div>
-        <Button onClick={() => router.push(`/workspaces/${workspaceId}/scheduled-queries/create`)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Schedule
-        </Button>
-      </div>
+          {/* Header */}
+          <div className="mb-8">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push(`/workspaces/${workspaceId}`)}
+              className="mb-4 text-black"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Workspace
+            </Button>
 
-      {/* Content */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight text-black">
+                  Scheduled Queries
+                </h1>
+                <p className="text-muted-foreground mt-2">
+                  Automate query execution and email reports
+                </p>
+              </div>
+              <Button
+                onClick={() => router.push(`/workspaces/${workspaceId}/scheduled-queries/create`)}
+                className="bg-[#ff5001] hover:bg-[#ff5001]/90 text-white"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Create Schedule
+              </Button>
+            </div>
+          </div>
+
+          {/* Content */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />

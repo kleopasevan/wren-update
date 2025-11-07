@@ -145,20 +145,26 @@ export default function CreateScheduledQueryPage() {
       <div className="flex-1 overflow-auto p-8 bg-background">
         <div className="max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex items-center space-x-4 mb-6">
+      <div className="mb-8">
         <Button
-          variant="outline"
+          variant="ghost"
           size="sm"
           onClick={() => router.push(`/workspaces/${workspaceId}/scheduled-queries`)}
+          className="mb-4 text-black"
         >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Scheduled Queries
         </Button>
-        <div>
-          <h1 className="text-3xl font-bold">Create Scheduled Query</h1>
-          <p className="text-muted-foreground mt-1">
-            Schedule a query to run automatically and send results via email
-          </p>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-black">
+              Create Scheduled Query
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              Schedule a query to run automatically and send results via email
+            </p>
+          </div>
         </div>
       </div>
 

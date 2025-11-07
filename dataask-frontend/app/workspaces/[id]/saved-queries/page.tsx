@@ -142,40 +142,44 @@ export default function SavedQueriesPage() {
     <AppLayout>
       <div className="flex-1 overflow-auto p-8 bg-background">
         <div className="max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => router.push(`/workspaces/${workspaceId}`)}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">Saved Queries</h1>
-            <p className="text-muted-foreground mt-1">
-              Manage and organize your saved queries
-            </p>
+          {/* Header */}
+          <div className="mb-8">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push(`/workspaces/${workspaceId}`)}
+              className="mb-4 text-black"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Workspace
+            </Button>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight text-black">
+                  Saved Queries
+                </h1>
+                <p className="text-muted-foreground mt-2">
+                  Manage and organize your saved queries
+                </p>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Search */}
-      <div className="mb-6">
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by name, description, or tags..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-      </div>
+          {/* Search */}
+          <div className="mb-6">
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name, description, or tags..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </div>
 
-      {/* Queries List */}
+          {/* Queries List */}
       {filteredQueries.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
