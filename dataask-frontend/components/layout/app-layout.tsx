@@ -1,26 +1,24 @@
 "use client"
 
-import { useState } from "react"
 import { AppSidebar } from "./app-sidebar"
-import { SidebarToggle } from "./sidebar-toggle"
+import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar"
 
 interface AppLayoutProps {
   children: React.ReactNode
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(true)
-
   return (
-    <div className="flex h-screen relative">
-      <AppSidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
-      {sidebarOpen && (
-        <SidebarToggle onClick={() => setSidebarOpen(!sidebarOpen)} />
-      )}
-      <main className="flex-1 flex flex-col overflow-hidden">
-        {children}
-      </main>
-    </div>
+    <SidebarProvider defaultOpen={true}>
+      <AppSidebar />
+      <SidebarInset>
+        <header className="flex h-14 items-center gap-4 border-b px-4">
+          <SidebarTrigger />
+        </header>
+        <main className="flex-1 overflow-auto">
+          {children}
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
   )
 }
-
