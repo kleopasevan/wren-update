@@ -137,9 +137,13 @@ export function AppSidebar() {
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     asChild
+                    isActive={pathname.startsWith(`/workspaces/${workspaceId}/connections`)}
                     tooltip="Connections"
+                    className={cn(
+                      pathname.startsWith(`/workspaces/${workspaceId}/connections`) && "bg-[#ff5001] text-white hover:bg-[#ff5001]/90 hover:text-white data-[active=true]:bg-[#ff5001] data-[active=true]:text-white"
+                    )}
                   >
-                    <Link href={`/workspaces/${workspaceId}?tab=connections`}>
+                    <Link href={`/workspaces/${workspaceId}/connections`}>
                       <Database className="h-4 w-4" />
                       <span>Connections</span>
                     </Link>
@@ -149,9 +153,13 @@ export function AppSidebar() {
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     asChild
+                    isActive={pathname.startsWith(`/workspaces/${workspaceId}/dashboards`)}
                     tooltip="Dashboards"
+                    className={cn(
+                      pathname.startsWith(`/workspaces/${workspaceId}/dashboards`) && "bg-[#ff5001] text-white hover:bg-[#ff5001]/90 hover:text-white data-[active=true]:bg-[#ff5001] data-[active=true]:text-white"
+                    )}
                   >
-                    <Link href={`/workspaces/${workspaceId}?tab=dashboards`}>
+                    <Link href={`/workspaces/${workspaceId}/dashboards`}>
                       <LayoutDashboard className="h-4 w-4" />
                       <span>Dashboards</span>
                     </Link>
@@ -202,6 +210,22 @@ export function AppSidebar() {
                     <Link href={`/workspaces/${workspaceId}/scheduled-queries`}>
                       <Calendar className="h-4 w-4" />
                       <span>Scheduled Queries</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname.startsWith(`/workspaces/${workspaceId}/settings`)}
+                    tooltip="Settings"
+                    className={cn(
+                      pathname.startsWith(`/workspaces/${workspaceId}/settings`) && "bg-[#ff5001] text-white hover:bg-[#ff5001]/90 hover:text-white data-[active=true]:bg-[#ff5001] data-[active=true]:text-white"
+                    )}
+                  >
+                    <Link href={`/workspaces/${workspaceId}/settings`}>
+                      <Settings className="h-4 w-4" />
+                      <span>Settings</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

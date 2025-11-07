@@ -1,73 +1,35 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter, useParams, useSearchParams } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import { useAuth } from '@/lib/contexts/auth-context'
 import { workspacesApi, type Workspace } from '@/lib/api/workspaces'
-import { connectionsApi, type Connection } from '@/lib/api/connections'
-import { dashboardsApi, type Dashboard } from '@/lib/api/dashboards'
+import { connectionsApi } from '@/lib/api/connections'
+import { dashboardsApi } from '@/lib/api/dashboards'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { CreateConnectionDialog } from '@/components/connections/CreateConnectionDialog'
-import { EditConnectionDialog } from '@/components/connections/EditConnectionDialog'
-import { DeleteConnectionDialog } from '@/components/connections/DeleteConnectionDialog'
-import { SchemaExplorerDialog } from '@/components/connections/SchemaExplorerDialog'
-import { CreateDashboardDialog } from '@/components/dashboards/CreateDashboardDialog'
-import { EditDashboardDialog } from '@/components/dashboards/EditDashboardDialog'
-import { DeleteDashboardDialog } from '@/components/dashboards/DeleteDashboardDialog'
 import { AppLayout } from '@/components/layout/app-layout'
-import { ArrowLeft, Plus, Database, MoreVertical, Pencil, Trash2, TestTube, LayoutDashboard, ListTree, FolderOpen, History, Clock } from 'lucide-react'
+import {
+  ArrowLeft,
+  Database,
+  LayoutDashboard,
+  FileText,
+  History,
+  Calendar,
+  Settings,
+  ArrowRight,
+} from 'lucide-react'
 
-type Tab = 'connections' | 'dashboards' | 'queries' | 'history' | 'schedules' | 'settings'
-
-export default function WorkspaceDetailPage() {
+export default function WorkspaceOverviewPage() {
   const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
   const params = useParams()
-  const searchParams = useSearchParams()
   const workspaceId = params.id as string
 
   const [workspace, setWorkspace] = useState<Workspace | null>(null)
-  const [activeTab, setActiveTab] = useState<Tab>(() => {
-    const tabParam = searchParams?.get('tab')
-    if (tabParam && ['connections', 'dashboards', 'queries', 'history', 'schedules', 'settings'].includes(tabParam)) {
-      return tabParam as Tab
-    }
-    return 'connections'
-  })
-
-  // Update active tab when URL param changes
-  useEffect(() => {
-    const tabParam = searchParams?.get('tab')
-    if (tabParam && ['connections', 'dashboards', 'queries', 'history', 'schedules', 'settings'].includes(tabParam)) {
-      setActiveTab(tabParam as Tab)
-    }
-  }, [searchParams])
-  const [connections, setConnections] = useState<Connection[]>([])
-  const [dashboards, setDashboards] = useState<Dashboard[]>([])
+  const [stats, setStats] = useState({ connections: 0, dashboards: 0 })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
-
-  // Connection dialog states
-  const [createConnectionDialogOpen, setCreateConnectionDialogOpen] = useState(false)
-  const [editConnectionDialogOpen, setEditConnectionDialogOpen] = useState(false)
-  const [deleteConnectionDialogOpen, setDeleteConnectionDialogOpen] = useState(false)
-  const [schemaExplorerDialogOpen, setSchemaExplorerDialogOpen] = useState(false)
-  const [selectedConnection, setSelectedConnection] = useState<Connection | null>(null)
-  const [testingConnectionId, setTestingConnectionId] = useState<string | null>(null)
-
-  // Dashboard dialog states
-  const [createDashboardDialogOpen, setCreateDashboardDialogOpen] = useState(false)
-  const [editDashboardDialogOpen, setEditDashboardDialogOpen] = useState(false)
-  const [deleteDashboardDialogOpen, setDeleteDashboardDialogOpen] = useState(false)
-  const [selectedDashboard, setSelectedDashboard] = useState<Dashboard | null>(null)
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -76,14 +38,14 @@ export default function WorkspaceDetailPage() {
     }
   }, [user, authLoading, router])
 
-  // Fetch workspace and data
+  // Fetch workspace and stats
   useEffect(() => {
     if (user && workspaceId) {
-      loadWorkspaceData()
+      loadData()
     }
   }, [user, workspaceId])
 
-  async function loadWorkspaceData() {
+  async function loadData() {
     try {
       setIsLoading(true)
       setError('')
@@ -92,80 +54,21 @@ export default function WorkspaceDetailPage() {
       const workspaceData = await workspacesApi.get(workspaceId)
       setWorkspace(workspaceData)
 
-      // Load connections and dashboards in parallel
-      await Promise.all([loadConnections(), loadDashboards()])
+      // Load stats in parallel
+      const [connectionsData, dashboardsData] = await Promise.all([
+        connectionsApi.list(workspaceId),
+        dashboardsApi.list(workspaceId),
+      ])
+
+      setStats({
+        connections: connectionsData.length,
+        dashboards: dashboardsData.length,
+      })
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to load workspace')
     } finally {
       setIsLoading(false)
     }
-  }
-
-  async function loadConnections() {
-    const connectionsData = await connectionsApi.list(workspaceId)
-    setConnections(connectionsData)
-  }
-
-  async function loadDashboards() {
-    const dashboardsData = await dashboardsApi.list(workspaceId)
-    setDashboards(dashboardsData)
-  }
-
-  // Connection handlers
-  function handleEditConnection(connection: Connection, e: React.MouseEvent) {
-    e.stopPropagation()
-    setSelectedConnection(connection)
-    setEditConnectionDialogOpen(true)
-  }
-
-  function handleDeleteConnection(connection: Connection, e: React.MouseEvent) {
-    e.stopPropagation()
-    setSelectedConnection(connection)
-    setDeleteConnectionDialogOpen(true)
-  }
-
-  async function handleTestConnection(connection: Connection, e: React.MouseEvent) {
-    e.stopPropagation()
-    setTestingConnectionId(connection.id)
-
-    try {
-      const result = await connectionsApi.test(workspaceId, connection.id)
-
-      if (result.status === 'success') {
-        alert(`Connection test successful!\n\n${result.message}`)
-      } else {
-        alert(`Connection test failed!\n\n${result.message}`)
-      }
-
-      await loadConnections()
-    } catch (err: any) {
-      alert(`Connection test failed!\n\n${err.response?.data?.detail || 'Unknown error'}`)
-    } finally {
-      setTestingConnectionId(null)
-    }
-  }
-
-  function handleViewSchema(connection: Connection, e: React.MouseEvent) {
-    e.stopPropagation()
-    setSelectedConnection(connection)
-    setSchemaExplorerDialogOpen(true)
-  }
-
-  // Dashboard handlers
-  function handleEditDashboard(dashboard: Dashboard, e: React.MouseEvent) {
-    e.stopPropagation()
-    setSelectedDashboard(dashboard)
-    setEditDashboardDialogOpen(true)
-  }
-
-  function handleDeleteDashboard(dashboard: Dashboard, e: React.MouseEvent) {
-    e.stopPropagation()
-    setSelectedDashboard(dashboard)
-    setDeleteDashboardDialogOpen(true)
-  }
-
-  function handleDashboardClick(dashboardId: string) {
-    router.push(`/workspaces/${workspaceId}/dashboards/${dashboardId}`)
   }
 
   // Show loading while checking authentication
@@ -196,6 +99,63 @@ export default function WorkspaceDetailPage() {
     )
   }
 
+  const quickLinks = [
+    {
+      icon: Database,
+      title: 'Connections',
+      description: 'Manage your data source connections',
+      href: `/workspaces/${workspaceId}/connections`,
+      count: stats.connections,
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50',
+    },
+    {
+      icon: LayoutDashboard,
+      title: 'Dashboards',
+      description: 'View and create analytics dashboards',
+      href: `/workspaces/${workspaceId}/dashboards`,
+      count: stats.dashboards,
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-50',
+    },
+    {
+      icon: FileText,
+      title: 'Saved Queries',
+      description: 'Access your saved SQL queries',
+      href: `/workspaces/${workspaceId}/saved-queries`,
+      count: null,
+      color: 'text-green-600',
+      bgColor: 'bg-green-50',
+    },
+    {
+      icon: History,
+      title: 'Query History',
+      description: 'View execution history and performance',
+      href: `/workspaces/${workspaceId}/query-history`,
+      count: null,
+      color: 'text-yellow-600',
+      bgColor: 'bg-yellow-50',
+    },
+    {
+      icon: Calendar,
+      title: 'Scheduled Queries',
+      description: 'Manage automated query execution',
+      href: `/workspaces/${workspaceId}/scheduled-queries`,
+      count: null,
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-50',
+    },
+    {
+      icon: Settings,
+      title: 'Settings',
+      description: 'Configure workspace settings',
+      href: `/workspaces/${workspaceId}/settings`,
+      count: null,
+      color: 'text-gray-600',
+      bgColor: 'bg-gray-50',
+    },
+  ]
+
   return (
     <AppLayout>
       <div className="flex-1 overflow-auto p-8 bg-background">
@@ -224,494 +184,84 @@ export default function WorkspaceDetailPage() {
             </div>
           </div>
 
-          {/* Tabs */}
-          <div className="border-b border-border mb-6">
-            <div className="flex space-x-6">
-              <button
-                onClick={() => {
-                  setActiveTab('connections')
-                  router.push(`/workspaces/${workspaceId}?tab=connections`)
-                }}
-                className={`pb-3 border-b-2 text-sm font-medium transition-colors ${
-                  activeTab === 'connections'
-                    ? 'border-[#ff5001] text-black'
-                    : 'border-transparent text-muted-foreground hover:text-black'
-                }`}
-              >
-                Connections
-              </button>
-              <button
-                onClick={() => {
-                  setActiveTab('dashboards')
-                  router.push(`/workspaces/${workspaceId}?tab=dashboards`)
-                }}
-                className={`pb-3 border-b-2 text-sm font-medium transition-colors ${
-                  activeTab === 'dashboards'
-                    ? 'border-[#ff5001] text-black'
-                    : 'border-transparent text-muted-foreground hover:text-black'
-                }`}
-              >
-                Dashboards
-              </button>
-              <button
-                onClick={() => {
-                  setActiveTab('queries')
-                  router.push(`/workspaces/${workspaceId}?tab=queries`)
-                }}
-                className={`pb-3 border-b-2 text-sm font-medium transition-colors ${
-                  activeTab === 'queries'
-                    ? 'border-[#ff5001] text-black'
-                    : 'border-transparent text-muted-foreground hover:text-black'
-                }`}
-              >
-                Saved Queries
-              </button>
-              <button
-                onClick={() => {
-                  setActiveTab('history')
-                  router.push(`/workspaces/${workspaceId}?tab=history`)
-                }}
-                className={`pb-3 border-b-2 text-sm font-medium transition-colors ${
-                  activeTab === 'history'
-                    ? 'border-[#ff5001] text-black'
-                    : 'border-transparent text-muted-foreground hover:text-black'
-                }`}
-              >
-                Query History
-              </button>
-              <button
-                onClick={() => {
-                  setActiveTab('schedules')
-                  router.push(`/workspaces/${workspaceId}?tab=schedules`)
-                }}
-                className={`pb-3 border-b-2 text-sm font-medium transition-colors ${
-                  activeTab === 'schedules'
-                    ? 'border-[#ff5001] text-black'
-                    : 'border-transparent text-muted-foreground hover:text-black'
-                }`}
-              >
-                Scheduled Queries
-              </button>
-              <button
-                onClick={() => {
-                  setActiveTab('settings')
-                  router.push(`/workspaces/${workspaceId}?tab=settings`)
-                }}
-                className={`pb-3 border-b-2 text-sm font-medium transition-colors ${
-                  activeTab === 'settings'
-                    ? 'border-[#ff5001] text-black'
-                    : 'border-transparent text-muted-foreground hover:text-black'
-                }`}
-              >
-                Settings
-              </button>
-            </div>
-          </div>
-
-        {/* Connections Tab */}
-        {activeTab === 'connections' && (
-          <div>
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-xl font-semibold">Data Connections</h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Connect to your data sources
-                </p>
-              </div>
-              <Button onClick={() => setCreateConnectionDialogOpen(true)} className="bg-[#ff5001] hover:bg-[#ff5001]/90 text-white">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Connection
-              </Button>
-            </div>
-
-            {isLoading && (
-              <div className="flex items-center justify-center py-12">
-                <div className="text-muted-foreground">Loading connections...</div>
-              </div>
-            )}
-
-            {!isLoading && connections.length === 0 && (
-              <Card className="border-dashed">
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <div className="rounded-full bg-muted p-3 mb-4">
-                    <Database className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-lg font-semibold mb-2">No connections yet</h3>
-                  <p className="text-sm text-muted-foreground text-center mb-4 max-w-sm">
-                    Connect to your databases like PostgreSQL, MySQL, BigQuery, Snowflake, and more
-                    to start analyzing your data.
-                  </p>
-                  <Button onClick={() => setCreateConnectionDialogOpen(true)} className="bg-[#ff5001] hover:bg-[#ff5001]/90 text-white">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Your First Connection
-                  </Button>
-                </CardContent>
+          {/* Quick Stats */}
+          {!isLoading && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardDescription>Total Connections</CardDescription>
+                  <CardTitle className="text-3xl">{stats.connections}</CardTitle>
+                </CardHeader>
               </Card>
-            )}
-
-            {!isLoading && connections.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {connections.map((connection) => (
-                  <Card key={connection.id} className="hover:bg-muted/50 transition-colors relative group">
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <CardTitle className="text-base">{connection.name}</CardTitle>
-                          {connection.description && (
-                            <CardDescription className="mt-1">
-                              {connection.description}
-                            </CardDescription>
-                          )}
-                        </div>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <MoreVertical className="h-4 w-4" />
-                              <span className="sr-only">Open menu</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={(e) => handleTestConnection(connection, e as any)}
-                              disabled={testingConnectionId === connection.id}
-                            >
-                              <TestTube className="mr-2 h-4 w-4" />
-                              {testingConnectionId === connection.id ? 'Testing...' : 'Test Connection'}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => handleViewSchema(connection, e as any)}>
-                              <ListTree className="mr-2 h-4 w-4" />
-                              View Schema
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => handleEditConnection(connection, e as any)}>
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={(e) => handleDeleteConnection(connection, e as any)}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2">
-                          <div className="font-mono bg-muted px-2 py-1 rounded">
-                            {connection.type}
-                          </div>
-                          <div
-                            className={`px-2 py-1 rounded ${
-                              connection.status === 'active'
-                                ? 'bg-green-500/10 text-green-500'
-                                : 'bg-yellow-500/10 text-yellow-500'
-                            }`}
-                          >
-                            {connection.status}
-                          </div>
-                        </div>
-                      </div>
-                      {connection.last_tested_at && (
-                        <div className="mt-2 text-xs text-muted-foreground">
-                          Last tested: {new Date(connection.last_tested_at).toLocaleDateString()}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Dashboards Tab */}
-        {activeTab === 'dashboards' && (
-          <div>
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-xl font-semibold">Dashboards</h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Create and manage your analytics dashboards
-                </p>
-              </div>
-              <Button onClick={() => setCreateDashboardDialogOpen(true)} className="bg-[#ff5001] hover:bg-[#ff5001]/90 text-white">
-                <Plus className="mr-2 h-4 w-4" />
-                Create Dashboard
-              </Button>
-            </div>
-
-            {isLoading && (
-              <div className="flex items-center justify-center py-12">
-                <div className="text-muted-foreground">Loading dashboards...</div>
-              </div>
-            )}
-
-            {!isLoading && dashboards.length === 0 && (
-              <Card className="border-dashed">
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <div className="rounded-full bg-muted p-3 mb-4">
-                    <LayoutDashboard className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-lg font-semibold mb-2">No dashboards yet</h3>
-                  <p className="text-sm text-muted-foreground text-center mb-4 max-w-sm">
-                    Create your first dashboard to visualize your data with charts, metrics, and tables.
-                  </p>
-                  <Button onClick={() => setCreateDashboardDialogOpen(true)} className="bg-[#ff5001] hover:bg-[#ff5001]/90 text-white">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create Your First Dashboard
-                  </Button>
-                </CardContent>
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardDescription>Total Dashboards</CardDescription>
+                  <CardTitle className="text-3xl">{stats.dashboards}</CardTitle>
+                </CardHeader>
               </Card>
-            )}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardDescription>Workspace Status</CardDescription>
+                  <CardTitle className="text-lg">Active</CardTitle>
+                </CardHeader>
+              </Card>
+            </div>
+          )}
 
-            {!isLoading && dashboards.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {dashboards.map((dashboard) => (
+          {/* Quick Links */}
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Quick Access</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {quickLinks.map((link) => {
+                const Icon = link.icon
+                return (
                   <Card
-                    key={dashboard.id}
-                    className="hover:bg-muted/50 transition-colors cursor-pointer relative group"
-                    onClick={() => handleDashboardClick(dashboard.id)}
+                    key={link.href}
+                    className="hover:shadow-md transition-shadow cursor-pointer group"
+                    onClick={() => router.push(link.href)}
                   >
                     <CardHeader>
                       <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <CardTitle className="text-base">{dashboard.name}</CardTitle>
-                          {dashboard.description && (
-                            <CardDescription className="mt-1">
-                              {dashboard.description}
-                            </CardDescription>
-                          )}
+                        <div className={`rounded-lg ${link.bgColor} p-3 mb-4`}>
+                          <Icon className={`h-6 w-6 ${link.color}`} />
                         </div>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <MoreVertical className="h-4 w-4" />
-                              <span className="sr-only">Open menu</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={(e) => handleEditDashboard(dashboard, e as any)}>
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={(e) => handleDeleteDashboard(dashboard, e as any)}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <ArrowRight className="h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                       </div>
+                      <CardTitle className="text-lg">{link.title}</CardTitle>
+                      <CardDescription>{link.description}</CardDescription>
+                      {link.count !== null && (
+                        <div className="mt-2">
+                          <span className="text-2xl font-bold text-black">{link.count}</span>
+                          <span className="text-sm text-muted-foreground ml-2">items</span>
+                        </div>
+                      )}
                     </CardHeader>
-                    <CardContent>
-                      <div className="text-xs text-muted-foreground">
-                        Created {new Date(dashboard.created_at).toLocaleDateString()}
-                      </div>
-                    </CardContent>
                   </Card>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Saved Queries Tab */}
-        {activeTab === 'queries' && (
-          <div>
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-xl font-semibold">Saved Queries</h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Manage and reuse your saved queries
-                </p>
-              </div>
-              <Button onClick={() => router.push(`/workspaces/${workspaceId}/saved-queries`)}>
-                <FolderOpen className="mr-2 h-4 w-4" />
-                View All Queries
-              </Button>
+                )
+              })}
             </div>
+          </div>
 
-            <Card className="border-dashed">
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <div className="rounded-full bg-muted p-3 mb-4">
-                  <FolderOpen className="h-6 w-6 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">Saved Queries Library</h3>
-                <p className="text-sm text-muted-foreground text-center mb-4 max-w-sm">
-                  Save queries from the Query Builder to reuse them later. Access your saved
-                  queries from any dashboard or widget.
+          {/* Welcome Message */}
+          {!isLoading && stats.connections === 0 && (
+            <Card className="mt-8 border-[#ff5001]">
+              <CardContent className="pt-6">
+                <h3 className="text-lg font-semibold mb-2">Welcome to DataAsk! 👋</h3>
+                <p className="text-muted-foreground mb-4">
+                  Get started by connecting your first data source. Once connected, you can create
+                  dashboards, save queries, and explore your data with AI-powered insights.
                 </p>
-                <Button onClick={() => router.push(`/workspaces/${workspaceId}/saved-queries`)}>
-                  <FolderOpen className="mr-2 h-4 w-4" />
-                  Browse Saved Queries
+                <Button
+                  onClick={() => router.push(`/workspaces/${workspaceId}/connections`)}
+                  className="bg-[#ff5001] hover:bg-[#ff5001]/90 text-white"
+                >
+                  <Database className="mr-2 h-4 w-4" />
+                  Connect Your First Data Source
                 </Button>
               </CardContent>
             </Card>
-          </div>
-        )}
-
-        {/* Query History Tab */}
-        {activeTab === 'history' && (
-          <div>
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-xl font-semibold">Query Execution History</h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  View all executed queries with performance metrics
-                </p>
-              </div>
-              <Button onClick={() => router.push(`/workspaces/${workspaceId}/query-history`)}>
-                <History className="mr-2 h-4 w-4" />
-                View Full History
-              </Button>
-            </div>
-
-            <Card className="border-dashed">
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <div className="rounded-full bg-muted p-3 mb-4">
-                  <History className="h-6 w-6 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">Query Execution History</h3>
-                <p className="text-sm text-muted-foreground text-center mb-4 max-w-sm">
-                  All executed queries are automatically tracked with execution time, status,
-                  and SQL details. Use this to debug issues or re-run queries.
-                </p>
-                <Button onClick={() => router.push(`/workspaces/${workspaceId}/query-history`)}>
-                  <History className="mr-2 h-4 w-4" />
-                  Browse Query History
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* Scheduled Queries Tab */}
-        {activeTab === 'schedules' && (
-          <div>
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-xl font-semibold">Scheduled Queries</h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Automate query execution and email reports
-                </p>
-              </div>
-              <Button onClick={() => router.push(`/workspaces/${workspaceId}/scheduled-queries`)}>
-                <Clock className="mr-2 h-4 w-4" />
-                View All Schedules
-              </Button>
-            </div>
-
-            <Card className="border-dashed">
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <div className="rounded-full bg-muted p-3 mb-4">
-                  <Clock className="h-6 w-6 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">Scheduled Query Execution</h3>
-                <p className="text-sm text-muted-foreground text-center mb-4 max-w-sm">
-                  Schedule queries to run automatically on cron schedules or fixed intervals.
-                  Results are emailed as CSV or PDF attachments.
-                </p>
-                <Button onClick={() => router.push(`/workspaces/${workspaceId}/scheduled-queries`)}>
-                  <Clock className="mr-2 h-4 w-4" />
-                  Manage Scheduled Queries
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* Settings Tab */}
-        {activeTab === 'settings' && (
-          <div>
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-xl font-semibold">Settings</h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Manage workspace settings
-                </p>
-              </div>
-            </div>
-            <Card>
-              <CardContent className="flex items-center justify-center py-12">
-                <p className="text-muted-foreground">Settings coming soon</p>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-      </div>
-
-      {/* Connection Dialogs */}
-      <CreateConnectionDialog
-        open={createConnectionDialogOpen}
-        onOpenChange={setCreateConnectionDialogOpen}
-        workspaceId={workspaceId}
-        onSuccess={loadConnections}
-      />
-
-      <EditConnectionDialog
-        open={editConnectionDialogOpen}
-        onOpenChange={setEditConnectionDialogOpen}
-        workspaceId={workspaceId}
-        connection={selectedConnection}
-        onSuccess={loadConnections}
-      />
-
-      <DeleteConnectionDialog
-        open={deleteConnectionDialogOpen}
-        onOpenChange={setDeleteConnectionDialogOpen}
-        workspaceId={workspaceId}
-        connection={selectedConnection}
-        onSuccess={loadConnections}
-      />
-
-      {selectedConnection && (
-        <SchemaExplorerDialog
-          open={schemaExplorerDialogOpen}
-          onOpenChange={setSchemaExplorerDialogOpen}
-          workspaceId={workspaceId}
-          connectionId={selectedConnection.id}
-          connectionName={selectedConnection.name}
-        />
-      )}
-
-      {/* Dashboard Dialogs */}
-      <CreateDashboardDialog
-        open={createDashboardDialogOpen}
-        onOpenChange={setCreateDashboardDialogOpen}
-        workspaceId={workspaceId}
-        onSuccess={loadDashboards}
-      />
-
-      <EditDashboardDialog
-        open={editDashboardDialogOpen}
-        onOpenChange={setEditDashboardDialogOpen}
-        workspaceId={workspaceId}
-        dashboard={selectedDashboard}
-        onSuccess={loadDashboards}
-      />
-
-      <DeleteDashboardDialog
-        open={deleteDashboardDialogOpen}
-        onOpenChange={setDeleteDashboardDialogOpen}
-        workspaceId={workspaceId}
-        dashboard={selectedDashboard}
-        onSuccess={loadDashboards}
-      />
+          )}
+        </div>
       </div>
     </AppLayout>
   )
